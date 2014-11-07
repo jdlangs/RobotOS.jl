@@ -1,10 +1,5 @@
 module ROS
 
-<<<<<<< HEAD
-# package code goes here
-
-end # module
-=======
 using PyCall
 @pyimport rospy
 
@@ -42,4 +37,3 @@ function message_class(msgtype::String)
 end
 
 end
->>>>>>> origin/master
