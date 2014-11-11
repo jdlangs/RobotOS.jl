@@ -1,5 +1,8 @@
 module ROS
 
+export msgs
+import Base.convert
+
 using PyCall
 @pyimport rospy
 
