@@ -1,20 +1,20 @@
 #Generate Julia composite types for ROS messages
 
-msg_instances = Dict{String, PyObject}()
+msg_classes = Dict{String, PyObject}()
 msg_builtin_types = Dict{String, (Symbol, Any)} (
-    "bool"    => (:Bool,false),
-    "int8"    => (:Int8,zero(Int8)),
-    "int16"   => (:Int16,zero(Int16)),
-    "int32"   => (:Int32,zero(Int32)),
-    "int64"   => (:Int64,zero(Int64)),
-    "uint8"   => (:Uint8,zero(Uint8)),
-    "uint16"  => (:Uint16,zero(Uint16)),
-    "uint32"  => (:Uint32,zero(Uint32)),
-    "uint64"  => (:Uint64,zero(Uint64)),
-    "float32" => (:Float32,zero(Float32)),
-    "float64" => (:Float64,zero(Float64)),
-    "string"  => (:ASCIIString,""),
-    "time"    => (:Float64,0.0),
+    "bool"    => (:Bool,        false),
+    "int8"    => (:Int8,        zero(Int8)),
+    "int16"   => (:Int16,       zero(Int16)),
+    "int32"   => (:Int32,       zero(Int32)),
+    "int64"   => (:Int64,       zero(Int64)),
+    "uint8"   => (:Uint8,       zero(Uint8)),
+    "uint16"  => (:Uint16,      zero(Uint16)),
+    "uint32"  => (:Uint32,      zero(Uint32)),
+    "uint64"  => (:Uint64,      zero(Uint64)),
+    "float32" => (:Float32,     zero(Float32)),
+    "float64" => (:Float64,     zero(Float64)),
+    "string"  => (:ASCIIString, ""),
+    "time"    => (:Float64,     0.0),
     )
 msg_modules = String[]
 
@@ -27,31 +27,37 @@ function genmsgs(m::Dict{String, Vector{String}})
             dependencies[msgtype] = importmsg(msgtype)
         end
     end
-    dependencies
-    #typelist = create_order(dependencies)
-    #modlist = mod_order(typelist)
-    #for mod in modlist
-        #buildmodule(mod, m[mod])
-    #end
+    typelist = typeorder(dependencies)
+    println("types: ")
+    println(typelist)
+    modlist = unique(map(t -> pkg_msg_strs(t)[1], typelist))
+    println("modules: ")
+    println(modlist)
+    for mod in modlist
+        modtypes = filter(t -> pkg_msg_strs(t)[1] == mod, typelist)
+        println(mod)
+        println(modtypes)
+        #buildmodule(mod, modtypes)
+    end
 end
 
-function modulelist(d::Dict{String, Set{String}})
-    mlrecurse!(currlist, d, pkg) = begin
-        if ! (pkg in currlist)
-            if haskey(d, pkg) #do dependencies first
-                for dpkg in d[pkg]
-                    mlrecurse!(currlist, d, dpkg)
+function typeorder(d::Dict{String, Set{String}})
+    trecurse!(currlist, d, t) = begin
+        if ! (t in currlist)
+            if haskey(d, t) #do dependencies first
+                for dt in d[t]
+                    trecurse!(currlist, d, dt)
                 end
             end
             #Now it's ok to add it
-            push!(currlist, pkg)
+            push!(currlist, t)
         end
     end
-    mlist = String[]
-    for p in keys(d)
-        mlrecurse!(mlist, d, p)
+    tlist = String[]
+    for t in keys(d)
+        trecurse!(tlist, d, t)
     end
-    mlist
+    tlist
 end
 
 function pkg_msg_strs(msgtype::String)
@@ -69,8 +75,8 @@ function jltype(msgtype::String)
     importmsg(msgtype)
     pkg, name = pkg_msg_strs(msgtype)
     
-    memnames = msg_instances[msgtype]["__slots__"]
-    memtypes = msg_instances[msgtype]["_slot_types"]
+    memnames = msg_classes[msgtype]["__slots__"]
+    memtypes = msg_classes[msgtype]["_slot_types"]
     members = [zip(memnames, memtypes)...]
     for (n,typ) in members
         if ismsg(typ)
@@ -91,16 +97,18 @@ end
 #Returns a list of messages this one is (fully) dependent on
 function importmsg(msgtype::String)
     mdepends = Set{String}()
-    if ! haskey(msg_instances,msgtype)
+    if ! haskey(msg_classes,msgtype)
         println("msg import: ", msgtype)
         pkg, msg = pkg_msg_strs(msgtype)
         pkgi = symbol(string("py_",pkg))
         pkgsym = symbol(pkg)
         msgsym = symbol(msg)
 
+        #Import python ROS module, no effect if already there
         @eval @pyimport $pkgsym.msg as $pkgi
-        msg_instances[msgtype] = @eval ($pkgi.$msgsym)()
-        subtypes = pycall(msg_instances[msgtype]["_get_types"], PyAny)
+        #Store a reference to the message class definition
+        msg_classes[msgtype] = @eval $pkgi.pymember($msg)
+        subtypes = msg_classes[msgtype][:_slot_types]
         for t in subtypes
             if ismsg(t)
                 push!(mdepends, t)
@@ -122,8 +130,8 @@ function buildmodule(modname::String, types::Vector{String})
     #Message may have dependencies within the same module
     #Need to build the type creation list in the proper order
     typerecurse(typelist::Vector{(String, Vector{Expr})}, mod, msgtype) = begin
-        memnames = msg_instances[msgtype]["__slots__"]
-        memtypes = msg_instances[msgtype]["_slot_types"]
+        memnames = msg_classes[msgtype]["__slots__"]
+        memtypes = msg_classes[msgtype]["_slot_types"]
         members = [zip(memnames, memtypes)...]
         for (mname,mtyp) in members
             if ismsg(mtyp)
