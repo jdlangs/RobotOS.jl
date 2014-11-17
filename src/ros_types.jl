@@ -1,6 +1,7 @@
 #Generate Julia composite types for ROS messages
 
 msg_classes = Dict{String, PyObject}()
+msg_deps = Dict{String, Set{String}}()
 msg_builtin_types = Dict{String, (Symbol, Any)} (
     "bool"    => (:Bool,        false),
     "int8"    => (:Int8,        zero(Int8)),
@@ -17,43 +18,40 @@ msg_builtin_types = Dict{String, (Symbol, Any)} (
     "time"    => (:Float64,     0.0),
     )
 msg_modules = String[]
+mod_deps = Dict{String, Set{String}}()
 
 function genmsgs(m::Dict{String, Vector{String}})
-    dependencies = Dict{String, Set{String}}()
     for (pkg, names) in m
-        println("Module import: ", pkg)
         for n in names
             msgtype = pkg * "/" * n
-            dependencies[msgtype] = importmsg(msgtype)
+            importmsg(msgtype)
         end
     end
-    typelist = typeorder(dependencies)
-    println("types: ")
-    println(typelist)
-    modlist = unique(map(t -> pkg_msg_strs(t)[1], typelist))
-    println("modules: ")
-    println(modlist)
+    modlist = order(mod_deps)
+    println("modules: $modlist")
     for mod in modlist
-        modtypes = filter(t -> pkg_msg_strs(t)[1] == mod, typelist)
+        modtypes = filter(Regex("^$mod/\\w+\$"), msg_deps)
+        mtypelist = order(modtypes)
         println(mod)
-        println(modtypes)
-        #buildmodule(mod, modtypes)
+        println(mtypelist)
+        buildmodule(mod, mtypelist)
     end
 end
 
-function typeorder(d::Dict{String, Set{String}})
+#Produce an order of the keys of d that respect their dependencies
+function order(d::Dict{String, Set{String}})
     trecurse!(currlist, d, t) = begin
         if ! (t in currlist)
             if haskey(d, t) #do dependencies first
                 for dt in d[t]
                     trecurse!(currlist, d, dt)
                 end
+                #Now it's ok to add it
+                push!(currlist, t)
             end
-            #Now it's ok to add it
-            push!(currlist, t)
         end
     end
-    tlist = String[]
+    tlist = ASCIIString[]
     for t in keys(d)
         trecurse!(tlist, d, t)
     end
@@ -68,88 +66,68 @@ function pkg_msg_strs(msgtype::String)
 end
 ismsg(s::String) = ismatch(r"^\w+/\w+$", s)
 
-#TODO:
-#  check if type defined
-#  add export names in module execution
-function jltype(msgtype::String)
-    importmsg(msgtype)
-    pkg, name = pkg_msg_strs(msgtype)
-    
-    memnames = msg_classes[msgtype]["__slots__"]
-    memtypes = msg_classes[msgtype]["_slot_types"]
-    members = [zip(memnames, memtypes)...]
-    for (n,typ) in members
-        if ismsg(typ)
-            jltype(typ)
-        end
-    end
-    typeexprs = buildtype(name, members) 
-    mod = eval(symbol(pkg)) #msg_modules[pkg]
-    println("New type: $pkg/$name")
-
-    for ex in typeexprs 
-        eval(mod, ex)
-    end
-    nothing
-end
-
 #Recursively import all needed messages for a given message
-#Returns a list of messages this one is (fully) dependent on
 function importmsg(msgtype::String)
-    mdepends = Set{String}()
     if ! haskey(msg_classes,msgtype)
         println("msg import: ", msgtype)
         pkg, msg = pkg_msg_strs(msgtype)
         pkgi = symbol(string("py_",pkg))
         pkgsym = symbol(pkg)
-        msgsym = symbol(msg)
 
         #Import python ROS module, no effect if already there
         @eval @pyimport $pkgsym.msg as $pkgi
+        if ! haskey(mod_deps, pkg)
+            mod_deps[pkg] = Set{String}()
+        end
         #Store a reference to the message class definition
         msg_classes[msgtype] = @eval $pkgi.pymember($msg)
+        msg_deps[msgtype] = Set{String}()
         subtypes = msg_classes[msgtype][:_slot_types]
         for t in subtypes
             if ismsg(t)
-                push!(mdepends, t)
+                if pkg != pkg_msg_strs(t)[1]
+                    push!(mod_deps[pkg], pkg_msg_strs(t)[1])
+                end
+                push!(msg_deps[msgtype], t)
 
-                subdepends = importmsg(t)
-                union!(mdepends, subdepends)
+                importmsg(t)
             end
         end
     end
-    mdepends
 end
 
-function buildmodule(modname::String, types::Vector{String})
+function buildmodule(modname::String, types::Vector)
+    println("Creating new module: ", modname)
     modsym = symbol(modname)
-    println("Creating new module: ", pkg)
     eval(Expr(:toplevel, :(module ($modsym) end)))
     push!(msg_modules, modname)
 
-    #Message may have dependencies within the same module
-    #Need to build the type creation list in the proper order
-    typerecurse(typelist::Vector{(String, Vector{Expr})}, mod, msgtype) = begin
-        memnames = msg_classes[msgtype]["__slots__"]
-        memtypes = msg_classes[msgtype]["_slot_types"]
-        members = [zip(memnames, memtypes)...]
-        for (mname,mtyp) in members
-            if ismsg(mtyp)
-                typerecurse(typelist, mod, mtyp)
-            end
-        end
-        typeexprs = buildtype(msgtype, members) 
-        push!(typelist, (msgtype, typeexprs))
+    mod = eval(modsym)
+
+    #Import/exports
+    eval(mod, Expr(:using, :PyCall))
+    eval(mod, Expr(:import, :Base, :convert))
+    for m in mod_deps[modname]
+        eval(mod, Expr(:using, :., :., symbol(m)))
     end
-
-    tlist = (String,Vector{Expr})[]
+    exports = Expr(:export)
     for typ in types
-        msgtype = modname * "/" * typ
+        pkg, msg = pkg_msg_strs(typ)
+        push!(exports.args, symbol(msg))
+    end
+    eval(mod, exports)
 
-        mod = eval(symbol(pkg)) #msg_modules[pkg]
-        println("New type: $pkg/$name")
+    for typ in types
+        pkg, msg = pkg_msg_strs(typ)
+        memnames = msg_classes[typ]["__slots__"]
+        memtypes = msg_classes[typ]["_slot_types"]
+        members = [zip(memnames, memtypes)...]
+        println(members)
+        typeexprs = buildtype(msg, members)
 
+        println("New type: $pkg/$msg")
         for ex in typeexprs 
+            println(ex)
             eval(mod, ex)
         end
     end
@@ -159,9 +137,6 @@ end
 #  - type/member declarations
 #  - default constructor
 #  - convert from PyObject
-#
-#TODO:
-#  array types
 function buildtype(name::String, members::Vector)
     println("Building: $name")
 
@@ -192,16 +167,21 @@ function buildtype(name::String, members::Vector)
         namesym = symbol(n)
         if ismsg(typ)
             pkg, msg = map(symbol, pkg_msg_strs(typ))
-            memexpr = :($namesym::(Main.ROS.$pkg).$msg)
-            defexpr = Expr(:call, :((Main.ROS.$pkg).$msg))
-            convexpr = :(jmsg.$namesym = convert((Main.ROS.$pkg).$msg, o[$n]))
-        elseif haskey(msg_builtin_types, typ)
-            j_typ, j_def = msg_builtin_types[typ]
-            memexpr = Expr(:(::), namesym, j_typ)
-            defexpr = j_def
-            convexpr = :(jmsg.$namesym = convert($j_typ, o[$n]))
+            memexpr = :($namesym::$msg)
+            defexpr = Expr(:call, msg)
+            convexpr = :(jmsg.$namesym = convert($msg, o[$n]))
         else
-            error("Unknown type: $typ, something wrong in members?\n  $members")
+            btype, arraylen = isbuiltin(typ)
+            j_typ, j_def = msg_builtin_types[btype]
+            if arraylen >= 0
+                memexpr = Expr(:(::), namesym, :(Array{$j_typ, 1}))
+                defexpr = :($j_typ[])
+                convexpr = :(jmsg.$namesym = convert(Array{$j_typ,1}, o[$n]))
+            else
+                memexpr = Expr(:(::), namesym, j_typ)
+                defexpr = j_def
+                convexpr = :(jmsg.$namesym = convert($j_typ, o[$n]))
+            end
         end
         push!(typeargs, memexpr)
         push!(consargs, defexpr)
@@ -209,3 +189,24 @@ function buildtype(name::String, members::Vector)
     end
     [typedecl, construct, pyconvert]
 end 
+
+function isbuiltin(typ::String)
+    arraylen = -1
+    arrtest = r"^(\w+)\[(\d*)\]$"
+    m = match(arrtest, typ)
+    if m != nothing
+        btype = m.captures[1]
+        if isempty(m.captures[2])
+            arraylen = 0
+        else
+            arraylen = int(m.captures[2])
+        end
+    else
+        btype = typ
+    end
+
+    if ! haskey(msg_builtin_types, btype)
+        error("ROS message generation, Unknown type: $typ")
+    end
+    btype, arraylen
+end
