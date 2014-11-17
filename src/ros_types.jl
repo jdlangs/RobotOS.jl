@@ -1,22 +1,26 @@
 #Generate Julia composite types for ROS messages
 
+import Base.zero
+
 msg_classes = Dict{String, PyObject}()
 msg_deps = Dict{String, Set{String}}()
-msg_builtin_types = Dict{String, (Symbol, Any)} (
-    "bool"    => (:Bool,        false),
-    "int8"    => (:Int8,        zero(Int8)),
-    "int16"   => (:Int16,       zero(Int16)),
-    "int32"   => (:Int32,       zero(Int32)),
-    "int64"   => (:Int64,       zero(Int64)),
-    "uint8"   => (:Uint8,       zero(Uint8)),
-    "uint16"  => (:Uint16,      zero(Uint16)),
-    "uint32"  => (:Uint32,      zero(Uint32)),
-    "uint64"  => (:Uint64,      zero(Uint64)),
-    "float32" => (:Float32,     zero(Float32)),
-    "float64" => (:Float64,     zero(Float64)),
-    "string"  => (:ASCIIString, ""),
-    "time"    => (:Float64,     0.0),
+msg_builtin_types = Dict{String, Symbol} (
+    "bool"    => :Bool,
+    "int8"    => :Int8,
+    "int16"   => :Int16,
+    "int32"   => :Int32,
+    "int64"   => :Int64,
+    "uint8"   => :Uint8,
+    "uint16"  => :Uint16,
+    "uint32"  => :Uint32,
+    "uint64"  => :Uint64,
+    "float32" => :Float32,
+    "float64" => :Float64,
+    "string"  => :ASCIIString,
+    "time"    => :Float64,
     )
+zero(::Type{ASCIIString}) = ""
+
 msg_modules = String[]
 mod_deps = Dict{String, Set{String}}()
 
@@ -64,7 +68,8 @@ function pkg_msg_strs(msgtype::String)
     end
     split(msgtype, '/')
 end
-ismsg(s::String) = ismatch(r"^\w+/\w+$", s)
+ismsg(s::String) = ismatch(r"^\w+/\w+(?:\[\d*\])?$", s)
+stripbrackets(s::String) = match(r"^([\w/]+)(?:\[\d*\])?$", s).captures[1]
 
 #Recursively import all needed messages for a given message
 function importmsg(msgtype::String)
@@ -85,6 +90,7 @@ function importmsg(msgtype::String)
         subtypes = msg_classes[msgtype][:_slot_types]
         for t in subtypes
             if ismsg(t)
+                t = stripbrackets(t)
                 if pkg != pkg_msg_strs(t)[1]
                     push!(mod_deps[pkg], pkg_msg_strs(t)[1])
                 end
@@ -138,8 +144,6 @@ end
 #  - default constructor
 #  - convert from PyObject
 function buildtype(name::String, members::Vector)
-    println("Building: $name")
-
     #Empty expressions
     typedecl = :(
         type $(symbol(name)) 
@@ -164,24 +168,28 @@ function buildtype(name::String, members::Vector)
             continue
         end
         println("\tmember: $n :: $typ")
-        namesym = symbol(n)
+
+        typ, arraylen = check_array_type(typ)
         if ismsg(typ)
-            pkg, msg = map(symbol, pkg_msg_strs(typ))
-            memexpr = :($namesym::$msg)
-            defexpr = Expr(:call, msg)
-            convexpr = :(jmsg.$namesym = convert($msg, o[$n]))
+            j_typ = symbol(pkg_msg_strs(typ)[2])
+            j_def = Expr(:call, j_typ)
         else
-            btype, arraylen = isbuiltin(typ)
-            j_typ, j_def = msg_builtin_types[btype]
-            if arraylen >= 0
-                memexpr = Expr(:(::), namesym, :(Array{$j_typ, 1}))
-                defexpr = :($j_typ[])
-                convexpr = :(jmsg.$namesym = convert(Array{$j_typ,1}, o[$n]))
-            else
-                memexpr = Expr(:(::), namesym, j_typ)
-                defexpr = j_def
-                convexpr = :(jmsg.$namesym = convert($j_typ, o[$n]))
+            if ! haskey(msg_builtin_types, typ)
+                error("Message generation; unknown type '$typ' in:\n$members")
             end
+            j_typ = msg_builtin_types[typ]
+            j_def = Expr(:call, :zero, j_typ)
+        end
+
+        namesym = symbol(n)
+        if arraylen >= 0
+            memexpr = :($namesym::Array{$j_typ,1})
+            defexpr = Expr(:call, :fill, j_def, arraylen)
+            convexpr = :(jmsg.$namesym = convert(Array{$j_typ,1}, o[$n]))
+        else
+            memexpr = :($namesym::$j_typ)
+            defexpr = j_def
+            convexpr = :(jmsg.$namesym = convert($j_typ, o[$n]))
         end
         push!(typeargs, memexpr)
         push!(consargs, defexpr)
@@ -190,9 +198,9 @@ function buildtype(name::String, members::Vector)
     [typedecl, construct, pyconvert]
 end 
 
-function isbuiltin(typ::String)
+function check_array_type(typ::String)
     arraylen = -1
-    arrtest = r"^(\w+)\[(\d*)\]$"
+    arrtest = r"^([\w/]+)\[(\d*)\]$"
     m = match(arrtest, typ)
     if m != nothing
         btype = m.captures[1]
@@ -203,10 +211,6 @@ function isbuiltin(typ::String)
         end
     else
         btype = typ
-    end
-
-    if ! haskey(msg_builtin_types, btype)
-        error("ROS message generation, Unknown type: $typ")
     end
     btype, arraylen
 end
