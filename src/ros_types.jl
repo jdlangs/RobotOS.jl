@@ -69,7 +69,6 @@ function pkg_msg_strs(msgtype::String)
     split(msgtype, '/')
 end
 ismsg(s::String) = ismatch(r"^\w+/\w+(?:\[\d*\])?$", s)
-stripbrackets(s::String) = match(r"^([\w/]+)(?:\[\d*\])?$", s).captures[1]
 
 #Recursively import all needed messages for a given message
 function importmsg(msgtype::String)
@@ -90,7 +89,7 @@ function importmsg(msgtype::String)
         subtypes = msg_classes[msgtype][:_slot_types]
         for t in subtypes
             if ismsg(t)
-                t = stripbrackets(t)
+                t, len = check_array_type(t)
                 if pkg != pkg_msg_strs(t)[1]
                     push!(mod_deps[pkg], pkg_msg_strs(t)[1])
                 end
