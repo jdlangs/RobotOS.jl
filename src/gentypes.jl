@@ -77,7 +77,9 @@ function buildmodule(modname::String, deps::Set, types::Vector)
     mod = eval(modsym)
 
     #Import/exports so the generated code can use external names
+    pymod = symbol(string("py_",modname))
     eval(mod, Expr(:using, :PyCall))
+    eval(mod, Expr(:import, :., :., pymod))
     eval(mod, Expr(:block, 
         Expr(:using, :., :., :ROS, :Time),
         Expr(:using, :., :., :ROS, :msgzero),
@@ -99,7 +101,7 @@ function buildmodule(modname::String, deps::Set, types::Vector)
         memnames = _msg_classes[typ]["__slots__"]
         memtypes = _msg_classes[typ]["_slot_types"]
         members = [zip(memnames, memtypes)...]
-        typeexprs = buildtype(msg, members)
+        typeexprs = buildtype(typ, members)
 
         for ex in typeexprs 
             eval(mod, ex)
@@ -112,30 +114,40 @@ end
 #  - type/member declarations
 #  - default constructor
 #  - convert to/from PyObject
-function buildtype(name::String, members::Vector)
+function buildtype(typ::String, members::Vector)
+    pkg, name = _pkg_msg_strs(typ)
+    pymod = symbol(string("py_",pkg))
+    nsym = symbol(name)
     println("Type: $name")
 
     #Empty expressions
     typedecl = :(
-        type $(symbol(name)) 
+        type $nsym
         end
     )
     construct = :(
-        $(symbol(name))() = $(symbol(name))()
+        $nsym() = $nsym()
     )
-    pyconvert = :(
-        convert(::Type{$(symbol(name))}, o::PyObject) = begin
-            jmsg = $(symbol(name))() 
-            jmsg 
+    tojl = :(
+        convert(::Type{$nsym}, o::PyObject) = begin
+            jl = $nsym()
+            jl
+        end
+    )
+    topy = :(
+        convert(::Type{PyObject}, o::$nsym) = begin
+            py = ($pymod.$nsym)()
+            py
         end
     )
     typeargs = typedecl.args[3].args
     consargs = construct.args[2].args
-    convargs = pyconvert.args[2].args
+    jlconargs = tojl.args[2].args
+    pyconargs = topy.args[2].args
 
     #Now add the type fields and their implications
-    for (n,typ) in members
-        println("\t$n :: $typ")
+    for (namestr,typ) in members
+        println("\t$namestr :: $typ")
 
         typ, arraylen = _check_array_type(typ)
         if _ismsg(typ)
@@ -149,21 +161,24 @@ function buildtype(name::String, members::Vector)
             j_def = Expr(:call, :msgzero, j_typ)
         end
 
-        namesym = symbol(n)
+        namesym = symbol(namestr)
         if arraylen >= 0
             memexpr = :($namesym::Array{$j_typ,1})
             defexpr = Expr(:call, :fill, j_def, arraylen)
-            convexpr = :(jmsg.$namesym = convert(Array{$j_typ,1}, o[$n]))
+            jlconexpr = :(jl.$namesym = convert(Array{$j_typ,1}, o[$namestr]))
+            pyconexpr = :(py[$namestr] = PyVector(o.$namesym))
         else
             memexpr = :($namesym::$j_typ)
             defexpr = j_def
-            convexpr = :(jmsg.$namesym = convert($j_typ, o[$n]))
+            jlconexpr = :(jl.$namesym = convert($j_typ, o[$namestr]))
+            pyconexpr = :(py[$namestr] = o.$namesym)
         end
         push!(typeargs, memexpr)
         push!(consargs, defexpr)
-        insert!(convargs, length(convargs), convexpr)
+        insert!(jlconargs, length(jlconargs), jlconexpr)
+        insert!(pyconargs, length(pyconargs), pyconexpr)
     end
-    [typedecl, construct, pyconvert]
+    [typedecl, construct, tojl, topy]
 end 
 
 #Produce an order of the keys of d that respect their dependencies
