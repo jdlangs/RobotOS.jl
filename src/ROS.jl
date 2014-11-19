@@ -1,7 +1,6 @@
 module ROS
 
-export msgs
-import Base.convert
+export genmsgs
 
 using PyCall
 @pyimport rospy

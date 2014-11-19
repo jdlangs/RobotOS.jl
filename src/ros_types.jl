@@ -1,8 +1,9 @@
 #Generate Julia composite types for ROS messages
 
-import Base.zero
+import Base: zero, convert
 
 msg_classes = Dict{String, PyObject}()
+mod_deps = Dict{String, Set{String}}()
 msg_deps = Dict{String, Set{String}}()
 msg_builtin_types = Dict{String, Symbol} (
     "bool"    => :Bool,
@@ -20,9 +21,6 @@ msg_builtin_types = Dict{String, Symbol} (
     "time"    => :Float64,
     )
 zero(::Type{ASCIIString}) = ""
-
-msg_modules = String[]
-mod_deps = Dict{String, Set{String}}()
 
 function genmsgs(m::Dict{String, Vector{String}})
     for (pkg, names) in m
@@ -73,7 +71,6 @@ ismsg(s::String) = ismatch(r"^\w+/\w+(?:\[\d*\])?$", s)
 #Recursively import all needed messages for a given message
 function importmsg(msgtype::String)
     if ! haskey(msg_classes,msgtype)
-        println("msg import: ", msgtype)
         pkg, msg = pkg_msg_strs(msgtype)
         pkgi = symbol(string("py_",pkg))
         pkgsym = symbol(pkg)
@@ -102,11 +99,8 @@ function importmsg(msgtype::String)
 end
 
 function buildmodule(modname::String, types::Vector)
-    println("Creating new module: ", modname)
     modsym = symbol(modname)
     eval(Expr(:toplevel, :(module ($modsym) end)))
-    push!(msg_modules, modname)
-
     mod = eval(modsym)
 
     #Import/exports
@@ -130,9 +124,7 @@ function buildmodule(modname::String, types::Vector)
         println(members)
         typeexprs = buildtype(msg, members)
 
-        println("New type: $pkg/$msg")
         for ex in typeexprs 
-            println(ex)
             eval(mod, ex)
         end
     end
