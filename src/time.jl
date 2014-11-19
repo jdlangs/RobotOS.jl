@@ -47,13 +47,13 @@ end
 
 #Temporal arithmetic
 +(t1::Time, t2::Duration) =
-    _canon_time(Time, t1.secs + t2.secs, t1.nsecs + t2.nsecs)
+    _canon_time(Time,     t1.secs + t2.secs, t1.nsecs + t2.nsecs)
 +(t1::Duration, t2::Time) =
-    _canon_time(Time, t1.secs + t2.secs, t1.nsecs + t2.nsecs)
+    _canon_time(Time,     t1.secs + t2.secs, t1.nsecs + t2.nsecs)
 +(t1::Duration, t2::Duration) =
     _canon_time(Duration, t1.secs + t2.secs, t1.nsecs + t2.nsecs)
 -(t1::Time, t2::Duration) =
-    _canon_time(Time, t1.secs - t2.secs, t1.nsecs - t2.nsecs)
+    _canon_time(Time,     t1.secs - t2.secs, t1.nsecs - t2.nsecs)
 -(t1::Duration, t2::Duration) =
     _canon_time(Duration, t1.secs - t2.secs, t1.nsecs - t2.nsecs)
 -(t1::Time, t2::Time) =
@@ -71,8 +71,9 @@ function _canon_time{T<:TVal}(typ::Type{T}, secs::Integer, nsecs::Integer)
 end
 
 type Rate
-    r::PyObject
+    o::PyObject
 end
+Rate(hz::FloatingPoint) = Rate(__rospy__.Rate(hz))
 
 type Timer
     t::PyObject
@@ -88,7 +89,7 @@ end
 
 function get_rostime()
     t = try
-        pycall(__rospy__.pymember("Time")["now"], PyObject)
+        __rospy__.get_rostime()
     catch ex
         error(pycall(pybuiltin("str"), PyAny, ex.val))
     end
@@ -97,4 +98,9 @@ end
 now() = get_rostime()
 
 to_sec{T<:TVal}(t::T) = float64(t.secs) + 1e-9*float64(t.nsecs)
-to_nsec{T<:TVal}(t::T) = 1e9*float(t.secs) + float64(t.nsecs)
+to_nsec{T<:TVal}(t::T) = 1000000000*t.secs + t.nsecs
+
+sleep(t::Duration) = __rospy__.sleep(convert(PyObject, t))
+sleep(t::FloatingPoint) = __rospy__.sleep(t)
+sleep(r::Rate) = pycall(r.o["sleep"], PyAny)
+
