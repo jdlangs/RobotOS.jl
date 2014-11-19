@@ -1,5 +1,7 @@
 #Generate Julia composite types for ROS messages
 
+import Base.convert
+
 _msg_classes = Dict{String, PyObject}()
 _msg_builtin_types = Dict{String, Symbol} (
     "bool"    => :Bool,
@@ -19,6 +21,18 @@ _msg_builtin_types = Dict{String, Symbol} (
 msgzero{T<:Real}(::Type{T}) = zero(T)
 msgzero(::Type{ASCIIString}) = ""
 msgzero(::Type{Time}) = Time()
+convert(::Type{Time}, o::PyObject) = begin
+    jlt = Time()
+    jlt.secs = o[:secs]
+    jlt.nsecs = o[:nsecs]
+    jlt
+end
+convert(::Type{PyObject}, t::Time) = begin
+    pyt = rospy.Time()
+    pyt["secs"] = t.secs
+    pyt["nsecs"] = t.nsecs
+    pyt
+end
 
 function genmsgs(m::Dict{String, Vector{String}})
     mod_deps = Dict{String, Set{String}}()
@@ -171,7 +185,7 @@ function buildtype(typ::String, members::Vector)
             memexpr = :($namesym::$j_typ)
             defexpr = j_def
             jlconexpr = :(jl.$namesym = convert($j_typ, o[$namestr]))
-            pyconexpr = :(py[$namestr] = o.$namesym)
+            pyconexpr = :(py[$namestr] = convert(PyObject, o.$namesym))
         end
         push!(typeargs, memexpr)
         push!(consargs, defexpr)
