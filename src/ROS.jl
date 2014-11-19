@@ -5,6 +5,7 @@ export genmsgs
 using PyCall
 @pyimport rospy
 
+include("time.jl")
 include("ros_types.jl")
 
 function init_node(name::String)
