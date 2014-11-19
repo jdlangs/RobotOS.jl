@@ -30,12 +30,9 @@ function genmsgs(m::Dict{String, Vector{String}})
         end
     end
     modlist = order(mod_deps)
-    println("modules: $modlist")
     for mod in modlist
         modtypes = filter(Regex("^$mod/\\w+\$"), msg_deps)
         mtypelist = order(modtypes)
-        println(mod)
-        println(mtypelist)
         buildmodule(mod, mtypelist)
     end
 end
@@ -121,7 +118,6 @@ function buildmodule(modname::String, types::Vector)
         memnames = msg_classes[typ]["__slots__"]
         memtypes = msg_classes[typ]["_slot_types"]
         members = [zip(memnames, memtypes)...]
-        println(members)
         typeexprs = buildtype(msg, members)
 
         for ex in typeexprs 
@@ -153,6 +149,7 @@ function buildtype(name::String, members::Vector)
     consargs = construct.args[2].args
     convargs = pyconvert.args[2].args
 
+    println("Type: $name")
     #Now add the type fields and their implications
     for (n,typ) in members
         if typ == "time"
