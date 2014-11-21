@@ -1,6 +1,6 @@
 module ROS
 
-export genmsgs
+export genmsgs, init_node
 
 using PyCall
 const __rospy__ = try
