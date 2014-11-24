@@ -8,15 +8,11 @@ type Time <: TVal
     nsecs::Int32
 end
 Time() = Time(0,0)
-Time(t::Float64) = Time(int(t),int((t-int(t)) * 1000000000))
+Time(t::FloatingPoint) =
+    Time(ifloor(Int32, t), iround(Int32, mod(t,1)*1e9))
 
 #PyObject conversions
-convert(::Type{Time}, o::PyObject) = begin
-    jlt = Time()
-    jlt.secs = o[:secs]
-    jlt.nsecs = o[:nsecs]
-    jlt
-end
+convert(::Type{Time}, o::PyObject) = Time(o[:secs],o[:nsecs])
 convert(::Type{PyObject}, t::Time) = begin
     pyt = __rospy__.Time()
     pyt["secs"] = t.secs
@@ -30,14 +26,10 @@ type Duration <: TVal
     nsecs::Int32
 end
 Duration() = Duration(0,0)
-Duration(t::Float64) = Duration(int(t),int((t-int(t)) * 1000000000))
+Duration(t::FloatingPoint) =
+    Duration(ifloor(Int32,t), iround(Int32,mod(t,1)*1e9))
 
-convert(::Type{Duration}, o::PyObject) = begin
-    jlt = Time()
-    jlt.secs = o[:secs]
-    jlt.nsecs = o[:nsecs]
-    jlt
-end
+convert(::Type{Duration}, o::PyObject) = Duration(o[:secs], o[:nsecs])
 convert(::Type{PyObject}, t::Duration) = begin
     pyt = __rospy__.Duration()
     pyt["secs"] = t.secs
@@ -103,4 +95,3 @@ to_nsec{T<:TVal}(t::T) = 1000000000*t.secs + t.nsecs
 sleep(t::Duration) = __rospy__.sleep(convert(PyObject, t))
 sleep(t::FloatingPoint) = __rospy__.sleep(t)
 sleep(r::Rate) = pycall(r.o["sleep"], PyAny)
-
