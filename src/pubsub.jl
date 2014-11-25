@@ -1,11 +1,11 @@
-#Message Publishing API
+#API for publishing and subscribing to message topics
 
 type Publisher{MsgType}
     o::PyObject
 end
 function Publisher{MsgType}(
-    topic::String, 
-    typ::Type{MsgType}; 
+    topic::String,
+    typ::Type{MsgType};
     kwargs...
 )
     msgtype = _type_to_string(typ)
@@ -48,6 +48,7 @@ function Subscriber{MsgType}(
     end
 end
 
+#Utility func to form a full string of the type including which module it's in
 function _type_to_string(typ::DataType)
     mod_str = split(string(Base.function_module(typ)), '.')[end]
     "$mod_str/$typ"

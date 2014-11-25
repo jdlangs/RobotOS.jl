@@ -11,11 +11,13 @@ catch ex
     end
 end
 
+#Put julia's ARGS into python's so remappings will work
+py_sys = pyimport("sys")
+py_sys["argv"] = ARGS
+
 include("time.jl")
 include("gentypes.jl")
-
-function init_node(node_name::String, args...)
-    __rospy__.init_node(node_name)
-end
+include("rospy.jl")
+include("publish.jl")
 
 end

@@ -23,6 +23,9 @@ msgzero(::Type{Time}) = Time(0,0)
 msgzero(::Type{Duration}) = Duration(0,0)
 
 function genmsgs(m::Dict{String, Vector{String}})
+    if ! isempty(_msg_classes)
+        error("Message regeneration not supported!")
+    end
     mod_deps = Dict{String, Set{String}}()
     msg_deps = Dict{String, Set{String}}()
     for (pkg, names) in m

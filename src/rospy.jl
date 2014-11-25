@@ -1,5 +1,11 @@
 #General rospy functions
 
+function init_node(node_name::String; args...)
+    __rospy__.init_node(node_name; args...)
+    pygui_start(:tk) #Need to figure out what's going on behind the scenes here
+    nothing
+end
+
 spin()                 = __rospy__.spin()
 is_shutdown()          = __rospy__.is_shutdown()
 get_caller_id()        = __rospy__.get_caller_id()
