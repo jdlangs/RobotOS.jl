@@ -18,6 +18,6 @@ py_sys["argv"] = ARGS
 include("time.jl")
 include("gentypes.jl")
 include("rospy.jl")
-include("publish.jl")
+include("pubsub.jl")
 
 end
