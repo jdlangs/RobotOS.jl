@@ -9,11 +9,11 @@ function Publisher{MsgType}(
     kwargs...
 )
     msgtype = _type_to_string(typ)
-    if ! haskey(_msg_classes, msgtype)
+    if ! haskey(_rospy_classes, msgtype)
         error("Type ($msgtype) has not been generated!")
     else
         Publisher{MsgType}(
-            __rospy__.Publisher(topic, _msg_classes[msgtype]; kwargs...)
+            __rospy__.Publisher(topic, _rospy_classes[msgtype]; kwargs...)
         )
     end
 end
@@ -34,13 +34,13 @@ function Subscriber{MsgType}(
 )
     msgtype = _type_to_string(typ)
     jl_callback(msg::PyObject) = callback(convert(typ, msg), callback_args...)
-    if ! haskey(_msg_classes, msgtype)
+    if ! haskey(_rospy_classes, msgtype)
         error("Type ($msgtype) has not been generated!")
     else
         Subscriber{MsgType}(
             __rospy__.Subscriber(
                 topic,
-                _msg_classes[msgtype],
+                _rospy_classes[msgtype],
                 jl_callback;
                 kwargs...
             )

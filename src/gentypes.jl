@@ -1,7 +1,8 @@
 #Generate Julia composite types for ROS messages
 
-_msg_classes = Dict{String, PyObject}()
-_msg_builtin_types = Dict{String, Symbol} (
+_rostypes = Dict{String, Vector{String}}()
+_rospy_classes = Dict{String, PyObject}()
+_ros_builtin_types = Dict{String, Symbol} (
     "bool"    => :Bool,
     "int8"    => :Int8,
     "int16"   => :Int16,
@@ -17,58 +18,86 @@ _msg_builtin_types = Dict{String, Symbol} (
     "time"    => :Time,
     "duration"=> :Duration,
     )
-msgzero{T<:Real}(::Type{T}) = zero(T)
-msgzero(::Type{ASCIIString}) = ""
-msgzero(::Type{Time}) = Time(0,0)
-msgzero(::Type{Duration}) = Duration(0,0)
+typezero{T<:Real}(::Type{T}) = zero(T)
+typezero(::Type{ASCIIString}) = ""
+typezero(::Type{Time}) = Time(0,0)
+typezero(::Type{Duration}) = Duration(0,0)
 
-function genmsgs(m::Dict{String, Vector{String}})
-    if ! isempty(_msg_classes)
-        error("Message regeneration not supported!")
-    end
-    mod_deps = Dict{String, Set{String}}()
-    msg_deps = Dict{String, Set{String}}()
-    for (pkg, names) in m
+function usetypes(types::Dict)
+    for (pkg,names) in types
         for n in names
-            msgtype = pkg * "/" * n
-            importmsg(msgtype, mod_deps, msg_deps)
+            _addtype(pkg,n)
         end
     end
-    modlist = _order(mod_deps)
-    for mod in modlist
-        modtypes = filter(Regex("^$mod/\\w+\$"), msg_deps)
-        mtypelist = _order(modtypes)
-        buildmodule(mod, mod_deps[mod], mtypelist)
+end
+function usetypes(names::String...)
+    for n in names
+        if _isrostype(n)
+            _addtype(_pkg_name_strs(n)...)
+        end
+    end
+end
+function usepkgtypes(pkg::String, names::String...)
+    for n in names
+        _addtype(pkg, n)
+    end
+end
+function _addtype(pkg::String, name::String)
+    if ! haskey(_rostypes, pkg)
+        _rostypes[pkg] = Vector{String}[]
+    end
+    if ! (name in _rostypes[pkg])
+        push!(_rostypes[pkg], name)
+    end
+end
+
+function gentypes()
+    if ! isempty(_rospy_classes)
+        error("Message regeneration not supported!")
+    end
+    pkg_deps = Dict{String, Set{String}}()
+    typ_deps = Dict{String, Set{String}}()
+    for (pkg, names) in _rostypes
+        for n in names
+            typestr = pkg * "/" * n
+            importtype(typestr, pkg_deps, typ_deps)
+        end
+    end
+    pkglist = _order(pkg_deps)
+    for pkg in pkglist
+        pkgtypes = filter(Regex("^$pkg/\\w+\$"), typ_deps)
+        mtypelist = _order(pkgtypes)
+        buildmodule(pkg, pkg_deps[pkg], mtypelist)
     end
 end
 
 #Recursively import all needed messages for a given message
-function importmsg(msgtype::String, mod_deps, msg_deps)
-    if ! haskey(_msg_classes,msgtype)
-        pkg, msg = _pkg_msg_strs(msgtype)
+function importtype(typestr::String, pkg_deps, typ_deps)
+    if ! haskey(_rospy_classes,typestr)
+        pkg, name = _pkg_name_strs(typestr)
         pkgi = symbol(string("py_",pkg))
         pkgsym = symbol(pkg)
 
         #Import python ROS module, no effect if already there
         @eval @pyimport $pkgsym.msg as $pkgi
-        if ! haskey(mod_deps, pkg)
-            mod_deps[pkg] = Set{String}()
+        if ! haskey(pkg_deps, pkg)
+            pkg_deps[pkg] = Set{String}()
         end
         #Store a reference to the message class definition
-        _msg_classes[msgtype] = @eval $pkgi.pymember($msg)
-        msg_deps[msgtype] = Set{String}()
-        subtypes = _msg_classes[msgtype][:_slot_types]
+        _rospy_classes[typestr] = @eval $pkgi.pymember($name)
+        typ_deps[typestr] = Set{String}()
+        subtypes = _rospy_classes[typestr][:_slot_types]
         for t in subtypes
-            if _ismsg(t)
+            if _isrostype(t)
                 t = _check_array_type(t)[1]
-                tpkg = _pkg_msg_strs(t)[1]
+                tpkg = _pkg_name_strs(t)[1]
                 if tpkg != pkg #Possibly a new module dependency
-                    push!(mod_deps[pkg], tpkg)
+                    push!(pkg_deps[pkg], tpkg)
                 end
                 #pushing to a set does not create duplicates
-                push!(msg_deps[msgtype], t)
+                push!(typ_deps[typestr], t)
 
-                importmsg(t, mod_deps, msg_deps)
+                importtype(t, pkg_deps, typ_deps)
             end
         end
     end
@@ -87,7 +116,7 @@ function buildmodule(modname::String, deps::Set, types::Vector)
     eval(mod, Expr(:import, :., :., pymod))
     eval(mod, Expr(:block, 
         Expr(:using, :., :., :ROS, :Time),
-        Expr(:using, :., :., :ROS, :msgzero),
+        Expr(:using, :., :., :ROS, :typezero),
     ))
     eval(mod, Expr(:import, :Base, :convert))
     for m in deps
@@ -95,16 +124,15 @@ function buildmodule(modname::String, deps::Set, types::Vector)
     end
     exports = Expr(:export)
     for typ in types
-        pkg, msg = _pkg_msg_strs(typ)
-        push!(exports.args, symbol(msg))
+        push!(exports.args, symbol(_pkg_name_strs(typ)[2]))
     end
     eval(mod, exports)
 
     #Type creation
     for typ in types
-        pkg, msg = _pkg_msg_strs(typ)
-        memnames = _msg_classes[typ]["__slots__"]
-        memtypes = _msg_classes[typ]["_slot_types"]
+        pkg, msg = _pkg_name_strs(typ)
+        memnames = _rospy_classes[typ]["__slots__"]
+        memtypes = _rospy_classes[typ]["_slot_types"]
         members = [zip(memnames, memtypes)...]
         typeexprs = buildtype(typ, members)
 
@@ -120,50 +148,55 @@ end
 #  - default constructor
 #  - convert to/from PyObject
 function buildtype(typ::String, members::Vector)
-    pkg, name = _pkg_msg_strs(typ)
+    pkg, name = _pkg_name_strs(typ)
     pymod = symbol(string("py_",pkg))
     nsym = symbol(name)
     println("Type: $name")
 
     #Empty expressions
-    typedecl = :(
+    exprs = Array(Expr, 4)
+    #Type declaration
+    exprs[1] = :(
         type $nsym
         end
     )
-    construct = :(
+    #Default constructor
+    exprs[2] = :(
         $nsym() = $nsym()
     )
-    tojl = :(
+    #Convert from PyObject
+    exprs[3] = :(
         convert(::Type{$nsym}, o::PyObject) = begin
             jl = $nsym()
             jl
         end
     )
-    topy = :(
+    #Convert to PyObject
+    exprs[4] = :(
         convert(::Type{PyObject}, o::$nsym) = begin
             py = ($pymod.$nsym)()
             py
         end
     )
-    typeargs = typedecl.args[3].args
-    consargs = construct.args[2].args
-    jlconargs = tojl.args[2].args
-    pyconargs = topy.args[2].args
+    typeargs  = exprs[1].args[3].args
+    consargs  = exprs[2].args[2].args
+    jlconargs = exprs[3].args[2].args
+    pyconargs = exprs[4].args[2].args
 
-    #Now add the type fields and their implications
+    #Now process the type members
     for (namestr,typ) in members
         println("\t$namestr :: $typ")
 
         typ, arraylen = _check_array_type(typ)
-        if _ismsg(typ)
-            j_typ = symbol(_pkg_msg_strs(typ)[2])
+        if _isrostype(typ)
+            j_typ = symbol(_pkg_name_strs(typ)[2])
             j_def = Expr(:call, j_typ)
         else
-            if ! haskey(_msg_builtin_types, typ)
+            if ! haskey(_ros_builtin_types, typ)
                 error("Message generation; unknown type '$typ' in:\n$members")
             end
-            j_typ = _msg_builtin_types[typ]
-            j_def = Expr(:call, :msgzero, j_typ)
+            j_typ = _ros_builtin_types[typ]
+            j_def = Expr(:call, :typezero, j_typ)
         end
 
         namesym = symbol(namestr)
@@ -183,7 +216,7 @@ function buildtype(typ::String, members::Vector)
         insert!(jlconargs, length(jlconargs), jlconexpr)
         insert!(pyconargs, length(pyconargs), pyconexpr)
     end
-    [typedecl, construct, tojl, topy]
+    return exprs
 end 
 
 #Produce an order of the keys of d that respect their dependencies
@@ -206,19 +239,19 @@ function _order(d::Dict{String, Set{String}})
     tlist
 end
 
-function _pkg_msg_strs(msgtype::String)
-    if ! _ismsg(msgtype)
-        error("Incorrect message type '$msgtype', use 'package_name/message'")
+function _pkg_name_strs(typestr::String)
+    if ! _isrostype(typestr)
+        error("Invalid message type '$typestr', use 'package_name/type_name'")
     end
-    split(msgtype, '/')
+    split(typestr, '/')
 end
-#Valid message string is all word chars split by a single forward slash, with
+#Valid ROS type string is all word chars split by a single forward slash, with
 #optional square brackets for array types
-_ismsg(s::String) = ismatch(r"^\w+/\w+(?:\[\d*\])?$", s)
+_isrostype(s::String) = ismatch(r"^\w+/\w+(?:\[\d*\])?$", s)
 
 #Sanitize a string by checking for and removing brackets if they are present
 #Return the sanitized type and the number inside the brackets if it is a fixed
-#size type. Returns -1 if variable size (no number)
+#size type. Returns 0 if variable size (no number), -1 if no brackets
 function _check_array_type(typ::String)
     arraylen = -1
     arrtest = r"^([\w/]+)\[(\d*)\]$"
