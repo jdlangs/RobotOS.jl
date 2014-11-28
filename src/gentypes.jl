@@ -1,8 +1,10 @@
 #Generate Julia composite types for ROS messages
+using Compat
 
-_rostypes = Dict{String, Vector{String}}()
-_rospy_classes = Dict{String, PyObject}()
-_ros_builtin_types = Dict{String, Symbol} (
+_rostypes = Dict{ASCIIString, Vector{ASCIIString}}()
+_rospy_classes = Dict{ASCIIString, PyObject}()
+_jltype_strs = Dict{DataType, ASCIIString}()
+_ros_builtin_types = @compat Dict{ASCIIString, Symbol}(
     "bool"    => :Bool,
     "int8"    => :Int8,
     "int16"   => :Int16,
@@ -44,7 +46,7 @@ function usepkgtypes(pkg::String, names::String...)
 end
 function _addtype(pkg::String, name::String)
     if ! haskey(_rostypes, pkg)
-        _rostypes[pkg] = Vector{String}[]
+        _rostypes[pkg] = Vector{ASCIIString}[]
     end
     if ! (name in _rostypes[pkg])
         push!(_rostypes[pkg], name)
@@ -55,8 +57,8 @@ function gentypes()
     if ! isempty(_rospy_classes)
         error("Message regeneration not supported!")
     end
-    pkg_deps = Dict{String, Set{String}}()
-    typ_deps = Dict{String, Set{String}}()
+    pkg_deps = Dict{ASCIIString, Set{ASCIIString}}()
+    typ_deps = Dict{ASCIIString, Set{ASCIIString}}()
     for (pkg, names) in _rostypes
         for n in names
             typestr = pkg * "/" * n
@@ -66,7 +68,7 @@ function gentypes()
     pkglist = _order(pkg_deps)
     for pkg in pkglist
         pkgtypes = filter(Regex("^$pkg/\\w+\$"), typ_deps)
-        mtypelist = _order(pkgtypes)
+        mtypelist::Vector{ASCIIString} = _order(pkgtypes)
         buildmodule(pkg, pkg_deps[pkg], mtypelist)
     end
 end
@@ -81,11 +83,11 @@ function importtype(typestr::String, pkg_deps, typ_deps)
         #Import python ROS module, no effect if already there
         @eval @pyimport $pkgsym.msg as $pkgi
         if ! haskey(pkg_deps, pkg)
-            pkg_deps[pkg] = Set{String}()
+            pkg_deps[pkg] = Set{ASCIIString}()
         end
         #Store a reference to the message class definition
         _rospy_classes[typestr] = @eval $pkgi.pymember($name)
-        typ_deps[typestr] = Set{String}()
+        typ_deps[typestr] = Set{ASCIIString}()
         subtypes = _rospy_classes[typestr][:_slot_types]
         for t in subtypes
             if _isrostype(t)
@@ -139,6 +141,7 @@ function buildmodule(modname::String, deps::Set, types::Vector)
         for ex in typeexprs 
             eval(mod, ex)
         end
+        @eval _jltype_strs[$mod.$(symbol(msg))] = $typ
     end
     nothing
 end
@@ -220,7 +223,7 @@ function buildtype(typ::String, members::Vector)
 end 
 
 #Produce an order of the keys of d that respect their dependencies
-function _order(d::Dict{String, Set{String}})
+function _order(d::Dict)
     trecurse!(currlist, d, t) = begin
         if ! (t in currlist)
             if haskey(d, t) #do dependencies first
@@ -232,7 +235,7 @@ function _order(d::Dict{String, Set{String}})
             end
         end
     end
-    tlist = String[]
+    tlist = ASCIIString[]
     for t in keys(d)
         trecurse!(tlist, d, t)
     end

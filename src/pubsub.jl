@@ -8,7 +8,7 @@ function Publisher{MsgType}(
     typ::Type{MsgType};
     kwargs...
 )
-    msgtype = _type_to_string(typ)
+    msgtype = _jltype_strs[typ] #_type_to_string(typ)
     if ! haskey(_rospy_classes, msgtype)
         error("Type ($msgtype) has not been generated!")
     else
@@ -32,7 +32,7 @@ function Subscriber{MsgType}(
     callback_args = ();
     kwargs...
 )
-    msgtype = _type_to_string(typ)
+    msgtype = _jltype_strs[typ] #_type_to_string(typ)
     jl_callback(msg::PyObject) = callback(convert(typ, msg), callback_args...)
     if ! haskey(_rospy_classes, msgtype)
         error("Type ($msgtype) has not been generated!")
@@ -49,7 +49,8 @@ function Subscriber{MsgType}(
 end
 
 #Utility func to form a full string of the type including which module it's in
-function _type_to_string(typ::DataType)
-    mod_str = split(string(Base.function_module(typ)), '.')[end]
-    "$mod_str/$typ"
-end
+#This works in v0.4 and avoids the need to keep a Dict in the ROS module
+#function _type_to_string(typ::DataType)
+    #mod_str = split(string(Base.function_module(typ)), '.')[end]
+    #"$mod_str/$typ"
+#end

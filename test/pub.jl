@@ -1,12 +1,15 @@
-msgdict = Dict{String, Vector{String}}(
+using Compat
+
+msgdict = @compat Dict{String, Vector{String}}(
     "sensor_msgs" => ["Temperature", "Imu"],
     "geometry_msgs" => ["PoseStamped", "Vector3", "PoseArray"],
     "nav_msgs" => ["Path"],
 )
-ROS.genmsgs(msgdict)
+ROS.usetypes(msgdict)
+ROS.gentypes()
 ROS.init_node("pub_test")
 
-pub = ROS.Publisher("pts", ROS.geometry_msgs.Vector3)
+pub = ROS.Publisher("pts", ROS.geometry_msgs.Vector3, queue_size=10)
 rate = ROS.Rate(1.0)
 
 while ! ROS.is_shutdown()
