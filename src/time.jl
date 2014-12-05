@@ -6,6 +6,10 @@ abstract TVal
 type Time <: TVal
     secs::Int32
     nsecs::Int32
+    Time(s,n) = begin 
+        ct = _canonical_time(s,n)
+        new(ct[1],ct[2])
+    end
 end
 Time() = Time(0,0)
 Time(t::FloatingPoint) =
@@ -14,35 +18,33 @@ Time(t::FloatingPoint) =
 type Duration <: TVal
     secs::Int32
     nsecs::Int32
+    Duration(s,n) = begin
+        ct = _canonical_time(s,n)
+        new(ct[1],ct[2])
+    end
 end
 Duration() = Duration(0,0)
 Duration(t::FloatingPoint) =
     Duration(floor(Int32,t), round(Int32, mod(t,1)*1e9))
 
-#Temporal arithmetic
-+(t1::Time, t2::Duration) =
-    _canon_time(Time,     t1.secs + t2.secs, t1.nsecs + t2.nsecs)
-+(t1::Duration, t2::Time) =
-    _canon_time(Time,     t1.secs + t2.secs, t1.nsecs + t2.nsecs)
-+(t1::Duration, t2::Duration) =
-    _canon_time(Duration, t1.secs + t2.secs, t1.nsecs + t2.nsecs)
--(t1::Time, t2::Duration) =
-    _canon_time(Time,     t1.secs - t2.secs, t1.nsecs - t2.nsecs)
--(t1::Duration, t2::Duration) =
-    _canon_time(Duration, t1.secs - t2.secs, t1.nsecs - t2.nsecs)
--(t1::Time, t2::Time) =
-    _canon_time(Duration, t1.secs - t2.secs, t1.nsecs - t2.nsecs)
-
 #Enforce 0 <= nsecs < 1e9
-function _canon_time{T<:TVal}(::Type{T}, secs::Integer, nsecs::Integer)
+function _canonical_time(secs::Integer, nsecs::Integer)
     nsec_conv = int32(1_000_000_000)
     dsecs, rnsecs  = convert((Int32, Int32), divrem(nsecs, nsec_conv))
     if rnsecs < 0
         dsecs = dsecs - one(Int32)
         rnsecs = rnsecs + nsec_conv
     end
-    T(secs + dsecs, rnsecs)
+    (secs + dsecs, rnsecs)
 end
+
+#Temporal arithmetic
++(t1::Time, t2::Duration) = Time(t1.secs+t2.secs, t1.nsecs+t2.nsecs)
++(t1::Duration, t2::Time) = Time(t1.secs+t2.secs, t1.nsecs+t2.nsecs)
++(t1::Duration, t2::Duration) = Duration(t1.secs+t2.secs, t1.nsecs+t2.nsecs)
+-(t1::Time, t2::Duration) = Time(t1.secs-t2.secs, t1.nsecs-t2.nsecs)
+-(t1::Duration, t2::Duration) = Duration(t1.secs-t2.secs, t1.nsecs-t2.nsecs)
+-(t1::Time, t2::Time) = Duration(t1.secs-t2.secs, t1.nsecs-t2.nsecs)
 
 #PyObject conversions
 convert(::Type{Time},     o::PyObject) = Time    (o[:secs],o[:nsecs])

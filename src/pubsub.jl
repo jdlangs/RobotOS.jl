@@ -21,17 +21,9 @@ type Subscriber{MsgType<:MsgT}
 
     function Subscriber(topic::String, cb::Function, cb_args = (); kwargs...)
         rospycls = _get_rospy_class(MsgType)
-        jl_callback(msg::PyObject) = cb(
-            convert(MsgType, msg),
-            cb_args...
-        )
+        jl_callback(msg::PyObject) = cb(convert(MsgType, msg), cb_args...)
         return new(
-            __rospy__.Subscriber(
-                topic,
-                rospycls,
-                jl_callback;
-                kwargs...
-            ),
+            __rospy__.Subscriber(topic, rospycls, jl_callback; kwargs...),
             jl_callback
         )
     end
