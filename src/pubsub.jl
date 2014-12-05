@@ -5,7 +5,7 @@ type Publisher{MsgType<:MsgT}
 
     function Publisher(topic::String; kwargs...)
         rospycls = _get_rospy_class(MsgType)
-        return new(__rospy__.Publisher(topic, rospycls, kwargs...))
+        return new(__rospy__.Publisher(topic, rospycls; kwargs...))
     end
 end
 Publisher{MsgType<:MsgT}(topic::String, ::Type{MsgType}; kwargs...) =
@@ -17,18 +17,13 @@ end
 
 type Subscriber{MsgType<:MsgT}
     o::PyObject
-    cb::Function
+    callback::Function
 
-    function Subscriber(
-        topic::String,
-        callback::Function,
-        callback_args = ();
-        kwargs...
-    )
+    function Subscriber(topic::String, cb::Function, cb_args = (); kwargs...)
         rospycls = _get_rospy_class(MsgType)
-        jl_callback(msg::PyObject) = callback(
-            convert(typ, msg),
-            callback_args...
+        jl_callback(msg::PyObject) = cb(
+            convert(MsgType, msg),
+            cb_args...
         )
         return new(
             __rospy__.Subscriber(
@@ -59,9 +54,9 @@ Subscriber{MsgType<:MsgT}(
 function _get_rospy_class(typ::DataType)
     rospycls =
         try
-            _rospy_classes[_jltype_strs[MsgType]] #_type_to_string(typ)
+            _rospy_classes[_jltype_strs[typ]] #_type_to_string(typ)
         catch KeyError
-            error("Type ($MsgType) is not generated or not publishable")
+            error("Type ($typ) is not generated or not publishable")
         end
     rospycls
 end
