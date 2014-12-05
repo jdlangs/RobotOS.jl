@@ -1,52 +1,53 @@
 #API for publishing and subscribing to message topics
 
-type Publisher{MsgType}
+type Publisher{MsgType<:MsgT}
     o::PyObject
-end
-function Publisher{MsgType}(
-    topic::String,
-    typ::Type{MsgType};
-    kwargs...
-)
-    msgtype = _jltype_strs[typ] #_type_to_string(typ)
-    if ! haskey(_rospy_classes, msgtype)
-        error("Type ($msgtype) has not been generated!")
-    else
-        Publisher{MsgType}(
-            __rospy__.Publisher(topic, _rospy_classes[msgtype]; kwargs...)
-        )
+
+    function Publisher(topic::String; kwargs...)
+        rospycls = _get_rospy_class(MsgType)
+        return new(__rospy__.Publisher(topic, rospycls, kwargs...))
     end
 end
+Publisher{MsgType<:MsgT}(topic::String, ::Type{MsgType}; kwargs...) =
+    Publisher{MsgType}(topic; kwargs...)
 
-function publish{MsgType}(p::Publisher{MsgType}, msg::MsgType)
+function publish{MsgType<:MsgT}(p::Publisher{MsgType}, msg::MsgType)
     pycall(p.o["publish"], PyAny, convert(PyObject, msg))
 end
 
-type Subscriber{MsgType}
+type Subscriber{MsgType<:MsgT}
     o::PyObject
-end
-function Subscriber{MsgType}(
-    topic::String,
-    typ::Type{MsgType},
-    callback::Function,
-    callback_args = ();
-    kwargs...
-)
-    msgtype = _jltype_strs[typ] #_type_to_string(typ)
-    jl_callback(msg::PyObject) = callback(convert(typ, msg), callback_args...)
-    if ! haskey(_rospy_classes, msgtype)
-        error("Type ($msgtype) has not been generated!")
-    else
-        Subscriber{MsgType}(
+    cb::Function
+
+    function Subscriber(
+        topic::String,
+        callback::Function,
+        callback_args = ();
+        kwargs...
+    )
+        rospycls = _get_rospy_class(MsgType)
+        jl_callback(msg::PyObject) = callback(
+            convert(typ, msg),
+            callback_args...
+        )
+        return new(
             __rospy__.Subscriber(
                 topic,
-                _rospy_classes[msgtype],
+                rospycls,
                 jl_callback;
                 kwargs...
-            )
+            ),
+            jl_callback
         )
     end
 end
+Subscriber{MsgType<:MsgT}(
+    topic::String,
+    ::Type{MsgType},
+    cb::Function,
+    cb_args=();
+    kwargs...
+) = Subscriber{MsgType}(topic, cb, cb_args; kwargs...)
 
 #Utility func to form a full string of the type including which module it's in
 #This works in v0.4 and avoids the need to keep a Dict in the ROS module
@@ -54,3 +55,13 @@ end
     #mod_str = split(string(Base.function_module(typ)), '.')[end]
     #"$mod_str/$typ"
 #end
+
+function _get_rospy_class(typ::DataType)
+    rospycls =
+        try
+            _rospy_classes[_jltype_strs[MsgType]] #_type_to_string(typ)
+        catch KeyError
+            error("Type ($MsgType) is not generated or not publishable")
+        end
+    rospycls
+end

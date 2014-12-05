@@ -25,6 +25,8 @@ typezero(::Type{ASCIIString}) = ""
 typezero(::Type{Time}) = Time(0,0)
 typezero(::Type{Duration}) = Duration(0,0)
 
+abstract MsgT
+
 function usetypes(types::Dict)
     for (pkg,names) in types
         for n in names
@@ -117,7 +119,9 @@ function buildmodule(modname::String, deps::Set, types::Vector)
     eval(mod, Expr(:using, :PyCall))
     eval(mod, Expr(:import, :., :., pymod))
     eval(mod, Expr(:block, 
+        Expr(:using, :., :., :ROS, :MsgT),
         Expr(:using, :., :., :ROS, :Time),
+        Expr(:using, :., :., :ROS, :Duration),
         Expr(:using, :., :., :ROS, :typezero),
     ))
     eval(mod, Expr(:import, :Base, :convert))
@@ -160,7 +164,7 @@ function buildtype(typ::String, members::Vector)
     exprs = Array(Expr, 4)
     #Type declaration
     exprs[1] = :(
-        type $nsym
+        type $nsym <: MsgT
         end
     )
     #Default constructor
