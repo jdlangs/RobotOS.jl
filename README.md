@@ -143,6 +143,7 @@ republishes them as Points.
     pub = Publisher{Point}("pts", queue_size=10)
     sub = Subscriber{Pose2D}("pose", callback, (pub,), queue_size=10)
 
+    init_node("rosjl_example")
     loop_rate = Rate(5.0)
     while ! is_shutdown()
         npt = Point(rand(), rand(), 0.0)
