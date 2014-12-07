@@ -1,10 +1,25 @@
 # ROS
+
+[![Build Status](https://travis-ci.org/phobon/ROS.jl.svg?branch=master)](https://travis-ci.org/phobon/ROS.jl)
+
 ## Overview
+
+### Description
 
 This package enables interfacing Julia code with a ROS system. It works by
 generating native Julia types for ROS messages, the same as in C++ or Python,
 and then wrapping rospy through the PyCall package to get communication through
 topics and parameters.
+
+### Contributing
+
+The package will hopefully continue to undergo substantial improvement. Please
+feel free to submit either an issue or pull request through github if you want
+to fix something or suggest a needed improvment, even if it's just to add an
+extra sentence in this README.
+
+Once the package gets tested somewhat in the wild, I'll plan to move it
+directly to version 1.0.
 
 ## Type Generation
 
@@ -105,5 +120,6 @@ example:
 `get_param`, `set_param`, `has_param`, and `delete_param` are all implemented
 in the `ROS` module with the same syntax as in rospy.
 
-[![Build
-Status](https://travis-ci.org/phobon/ROS.jl.svg?branch=master)](https://travis-ci.org/phobon/ROS.jl)
+## Versions
+
+- `0.1.0` : Initial release
