@@ -7,8 +7,8 @@ type Time <: TVal
     secs::Int32
     nsecs::Int32
     Time(s,n) = begin 
-        ct = _canonical_time(s,n)
-        new(ct[1],ct[2])
+        cs, cns = _canonical_time(s,n)
+        new(cs, cns)
     end
 end
 Time() = Time(0,0)
@@ -19,8 +19,8 @@ type Duration <: TVal
     secs::Int32
     nsecs::Int32
     Duration(s,n) = begin
-        ct = _canonical_time(s,n)
-        new(ct[1],ct[2])
+        cs, cns = _canonical_time(s,n)
+        new(cs, cns)
     end
 end
 Duration() = Duration(0,0)

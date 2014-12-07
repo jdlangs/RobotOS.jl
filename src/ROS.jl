@@ -1,6 +1,12 @@
 module ROS
 
-export usetypes, usepkg, gentypes, init_node
+export usetypes, usepkg, gentypes,
+       Time, Duration, Rate, to_sec, to_nsec, now, get_rostime, sleep,
+       Publisher, Subscriber, publish,
+       init_node, is_shutdown, spin,
+       get_param, has_param, set_param, delete_param,
+       logdebug, loginfo, logwarn, logerr, logfatal,
+
 
 using PyCall
 const __rospy__ = try
