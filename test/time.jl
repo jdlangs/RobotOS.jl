@@ -18,4 +18,4 @@ d3 = Duration(0, 1)
 @test t1 - t2 == d3
 @test t1 - d3 == t2
 @test d1 + d2 + d3 == Duration(t3.secs, t3.nsecs)
-@test d2 - d1 + d3 == Duration(0, 500_000_000)
+@test d2 - d1 - d3 == Duration(0, 500_000_000)
