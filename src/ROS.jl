@@ -9,7 +9,11 @@ export usetypes, usepkg, gentypes,
 
 using PyCall
 const __rospy__ = try
-    pywrap(pyimport("rospy"))
+    if isdefined(Main, :TESTENV)
+        0
+    else
+        pywrap(pyimport("rospy"))
+    end
 catch ex
     if ex.val[:args][1] == "No module named rospy"
         error("rospy not found!\nHas an environment setup script been run?")

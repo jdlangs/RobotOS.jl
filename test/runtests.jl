@@ -1,3 +1,5 @@
+TESTENV = true
+
 using ROS
 using Base.Test
 
