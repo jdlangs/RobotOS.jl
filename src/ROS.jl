@@ -1,6 +1,6 @@
 module ROS
 
-export usetypes, usepkgtypes, gentypes, init_node
+export usetypes, usepkg, gentypes, init_node
 
 using PyCall
 const __rospy__ = try

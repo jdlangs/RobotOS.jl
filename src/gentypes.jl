@@ -38,10 +38,12 @@ function usetypes(names::String...)
     for n in names
         if _isrostype(n)
             _addtype(_pkg_name_strs(n)...)
+        else
+            error("Invalid ros type: $n")
         end
     end
 end
-function usepkgtypes(pkg::String, names::String...)
+function usepkg(pkg::String, names::String...)
     for n in names
         _addtype(pkg, n)
     end
@@ -76,19 +78,27 @@ function gentypes()
 end
 
 #Recursively import all needed messages for a given message
-function importtype(typestr::String, pkg_deps, typ_deps)
+function importtype(typestr::String, pkg_deps::Dict, typ_deps::Dict)
     if ! haskey(_rospy_classes,typestr)
         pkg, name = _pkg_name_strs(typestr)
         pkgi = symbol(string("py_",pkg))
         pkgsym = symbol(pkg)
 
         #Import python ROS module, no effect if already there
-        @eval @pyimport $pkgsym.msg as $pkgi
+        try
+            @eval @pyimport $pkgsym.msg as $pkgi
+        catch ex
+            error("python import error: $(ex.val[:args][1])")
+        end
         if ! haskey(pkg_deps, pkg)
             pkg_deps[pkg] = Set{ASCIIString}()
         end
         #Store a reference to the message class definition
-        _rospy_classes[typestr] = @eval $pkgi.pymember($name)
+        _rospy_classes[typestr] = try
+            @eval $pkgi.pymember($name)
+        catch KeyError
+            error("$name not found in package: $pkg")
+        end
         typ_deps[typestr] = Set{ASCIIString}()
         subtypes = _rospy_classes[typestr][:_slot_types]
         for t in subtypes
