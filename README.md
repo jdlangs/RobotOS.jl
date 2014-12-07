@@ -1,15 +1,20 @@
-# ROS.jl
+# RobotOS.jl
 
-[![Build Status](https://travis-ci.org/phobon/ROS.jl.svg?branch=master)](https://travis-ci.org/phobon/ROS.jl)
+[![Build Status](https://travis-ci.org/phobon/RobotOS.jl.svg?branch=master)](https://travis-ci.org/phobon/RobotOS.jl)
 
 ## Overview
 
 ### Description
 
 This package enables interfacing Julia code with a ROS ([Robot Operating
-System](http://ros.org)) system. It works by generating native Julia types for
+System](http://wiki.ros.org)) system. It works by generating native Julia types for
 ROS messages, the same as in C++ or Python, and then wrapping rospy through the
 PyCall package to get communication through topics and parameters.
+
+### Installation
+
+    Pkg.add("RobotOS")
+    using RobotOS
 
 ### Contributing
 
@@ -28,7 +33,6 @@ system as strings "_package_/_message_". All the needed dependencies will be
 automatically included. There are three interface functions to do this. For
 example:
 
-    using ROS
     usetypes("geometry_msgs/Pose", "nav_msgs/Path")
     usetypes(Dict("sensor_msgs" => ["Imu", "NavSatFix"], "std_msgs" => ["Header"]))
     usepkg("geometry_msgs", "PoseStamped", "Point", "Vector3")
@@ -45,14 +49,14 @@ generation with:
 
     gentypes()
 
-The new types will be placed in newly created submodules in `ROS`,
+The new types will be placed in newly created submodules in `RobotOS`,
 corresponding to the packages requested. For example, `"std_msgs/Header" =>
-ROS.std_msgs.Header`. After calling `gentypes()` they can be interacted with
+RobotOS.std_msgs.Header`. After calling `gentypes()` they can be interacted with
 just like regular modules with `import` and `using` statements bringing the
 generated type names into the local namespace.
 
-    using ROS.nav_msgs
-    import ROS.geometry_msgs: Pose, Vector3
+    using RobotOS.nav_msgs
+    import RobotOS.geometry_msgs: Pose, Vector3
     p = Path()
     v = Vector3(1.1,2.2,3.3)
 
@@ -93,13 +97,13 @@ amount implied by type and value of the `t` parameter.
 Publishing messages is the same as in rospy, except use the `publish` method,
 paired with a Publisher object. For example:
 
-    using ROS.geometry_msgs
-    pub = ROS.Publisher{PointStamped}("topic", queue_size = 10) #or...
-    #pub = ROS.Publisher("topic", PointStamped, queue_size = 10)
+    using RobotOS.geometry_msgs
+    pub = Publisher{PointStamped}("topic", queue_size = 10) #or...
+    #pub = Publisher("topic", PointStamped, queue_size = 10)
     msg = PointStamped()
-    msg.header.stamp = ROS.now()
+    msg.header.stamp = now()
     msg.point.x = 1.1
-    ROS.publish(pub, msg)
+    publish(pub, msg)
 
 The keyword arguments in the `Publisher` constructor are passed directly on to
 rospy so anything it accepts will be valid.
@@ -112,18 +116,18 @@ callback is invoked. Note that it must be passed as a tuple, even if there is
 only a single argument. And again, keyword arguments are directly forwarded. An
 example:
 
-    using ROS.sensor_msgs
+    using RobotOS.sensor_msgs
     cb1(msg::Imu, a::String) = println(a,": ",msg.linear_acceleration.x)
     cb2(msg::Imu) = println(msg.angular_velocity.z)
-    sub1 = ROS.Subscriber{Imu}("topic", cb1, ("accel",), queue_size = 10) #or...
-    #sub1 = ROS.Subscriber("topic", Imu, cb1, ("accel",), queue_size = 10)
-    sub2 = ROS.Subscriber{Imu}("topic", cb2, queue_size = 10)
-    ROS.spin()
+    sub1 = Subscriber{Imu}("topic", cb1, ("accel",), queue_size = 10) #or...
+    #sub1 = Subscriber("topic", Imu, cb1, ("accel",), queue_size = 10)
+    sub2 = Subscriber{Imu}("topic", cb2, queue_size = 10)
+    spin()
 
 ### Parameter Server
 
 `get_param`, `set_param`, `has_param`, and `delete_param` are all implemented
-in the `ROS` module with the same syntax as in rospy.
+in the `RobotOS` module with the same syntax as in rospy.
 
 ## Full example
 
@@ -131,10 +135,10 @@ This example demonstrates publishing a random `geometry_msgs/Point` message at
 5 Hz. It also listens for incoming `geometry_msgs/Pose2D` messages and
 republishes them as Points.
 
-    using ROS
+    using RobotOS
     usepkg("geometry_msgs", "Point", "Pose2D")
     gentypes()
-    using ROS.geometry_msgs
+    using RobotOS.geometry_msgs
 
     callback(msg::Pose2D, pub_obj::Publisher{Point}) = begin
         pt_msg = Point(msg.x, msg.y, 0.0)

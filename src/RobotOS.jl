@@ -1,4 +1,4 @@
-module ROS
+module RobotOS
 
 export usetypes, usepkg, gentypes,
        Time, Duration, Rate, to_sec, to_nsec, now, get_rostime, sleep,

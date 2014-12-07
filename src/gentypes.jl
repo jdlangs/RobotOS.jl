@@ -129,10 +129,10 @@ function buildmodule(modname::String, deps::Set, types::Vector)
     eval(mod, Expr(:using, :PyCall))
     eval(mod, Expr(:import, :., :., pymod))
     eval(mod, Expr(:block, 
-        Expr(:using, :., :., :ROS, :MsgT),
-        Expr(:using, :., :., :ROS, :Time),
-        Expr(:using, :., :., :ROS, :Duration),
-        Expr(:using, :., :., :ROS, :typezero),
+        Expr(:using, :., :., :MsgT),
+        Expr(:using, :., :., :Time),
+        Expr(:using, :., :., :Duration),
+        Expr(:using, :., :., :typezero),
     ))
     eval(mod, Expr(:import, :Base, :convert))
     for m in deps
