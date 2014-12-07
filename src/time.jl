@@ -69,6 +69,7 @@ type Rate
     o::PyObject
 end
 Rate(hz::FloatingPoint) = Rate(__rospy__.Rate(hz))
+Rate(d::Duration) = Rate(1.0/to_sec(d))
 
 type Timer
     t::PyObject

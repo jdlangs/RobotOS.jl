@@ -1,4 +1,4 @@
-# ROS
+# ROS.jl
 
 [![Build Status](https://travis-ci.org/phobon/ROS.jl.svg?branch=master)](https://travis-ci.org/phobon/ROS.jl)
 
@@ -6,10 +6,10 @@
 
 ### Description
 
-This package enables interfacing Julia code with a ROS system. It works by
-generating native Julia types for ROS messages, the same as in C++ or Python,
-and then wrapping rospy through the PyCall package to get communication through
-topics and parameters.
+This package enables interfacing Julia code with a ROS ([Robot Operating
+System](http://ros.org)) system. It works by generating native Julia types for
+ROS messages, the same as in C++ or Python, and then wrapping rospy through the
+PyCall package to get communication through topics and parameters.
 
 ### Contributing
 
@@ -43,7 +43,7 @@ Any number of these three functions can be called as needed to specify the
 desired message types to generate. When finished, initiate the message
 generation with:
 
-    ROS.gentypes()
+    gentypes()
 
 The new types will be placed in newly created submodules in `ROS`,
 corresponding to the packages requested. For example, `"std_msgs/Header" =>
@@ -74,14 +74,19 @@ arguments on to rospy directly. (Required)
 
 ### Time
 
-Native Julia types `ROS.Time` and `ROS.Duration` are defined, both as a
-composite of an integral number of seconds and nanoseconds, as in rospy.
-Arithmetic and comparison operators are also defined. Related functions are:
+Native Julia types `Time` and `Duration` are defined, both as a composite of an
+integral number of seconds and nanoseconds, as in rospy.  Arithmetic and
+comparison operators are also defined. A `Rate` type is defined as a wrapper
+for the rospy Rate, which keeps loops running on a near fixed time interval. It
+can be constructed with a `Duration` object, or a floating-point value,
+specifying the loop rate in Hz. Other functions are:
 
 - `get_rostime()`, `now()` : Current time as `Time` object.
 - `to_sec(time_obj)`, `convert(Float64, time_obj)` : Convert `Time` or
 `Duration` object to floating-point number of seconds.
 - `to_nsec(time_obj)` : Convert object to integral number of nanoseconds.
+- `sleep(t::Duration)`, `sleep(t::FloatingPoint)`, `sleep(t::Rate)` : Sleep the
+amount implied by type and value of the `t` parameter.
 
 ### Publishing Messages
 
@@ -101,8 +106,8 @@ rospy so anything it accepts will be valid.
 
 ### Subscribing to a Topic
 
-Subscribing to a topic is same as in rospy. When creating a `Subscriber`, an
-optional `callback_args` parameter can be given to forward on whenever the
+Subscribing to a topic is the same as in rospy. When creating a `Subscriber`,
+an optional `callback_args` parameter can be given to forward on whenever the
 callback is invoked. Note that it must be passed as a tuple, even if there is
 only a single argument. And again, keyword arguments are directly forwarded. An
 example:
@@ -119,6 +124,31 @@ example:
 
 `get_param`, `set_param`, `has_param`, and `delete_param` are all implemented
 in the `ROS` module with the same syntax as in rospy.
+
+## Full example
+
+This example demonstrates publishing a random `geometry_msgs/Point` message at
+5 Hz. It also listens for incoming `geometry_msgs/Pose2D` messages and
+republishes them as Points.
+
+    using ROS
+    usepkg("geometry_msgs", "Point", "Pose2D")
+    gentypes()
+    using ROS.geometry_msgs
+
+    callback(msg::Pose2D, pub_obj::Publisher{Point}) = begin
+        pt_msg = Point(msg.x, msg.y, 0.0)
+        publish(pub_obj, pt_msg)
+    end
+    pub = Publisher{Point}("pts", queue_size=10)
+    sub = Subscriber{Pose2D}("pose", callback, (pub,), queue_size=10)
+
+    loop_rate = Rate(5.0)
+    while ! is_shutdown()
+        npt = Point(rand(), rand(), 0.0)
+        publish(pub, npt)
+        sleep(loop_rate)
+    end
 
 ## Versions
 
