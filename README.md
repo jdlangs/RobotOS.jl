@@ -26,7 +26,7 @@ extra sentence in this README.
 Once the package gets tested somewhat in the wild, I'll plan to move it
 directly to version 1.0.
 
-## Type Generation
+## Usage: Type Generation
 
 To use the package, first specify the ROS message types you want to use in your
 system as strings "_package_/_message_". All the needed dependencies will be
@@ -60,7 +60,7 @@ generated type names into the local namespace.
     p = Path()
     v = Vector3(1.1,2.2,3.3)
 
-## ROS API
+## Usage: ROS API
 
 In general, the ROS api functions directly match those provided in rospy, with
 few cosmetic differences. The API functions can reviewed here:
@@ -129,11 +129,35 @@ example:
 `get_param`, `set_param`, `has_param`, and `delete_param` are all implemented
 in the `RobotOS` module with the same syntax as in rospy.
 
+## ROS Integration
+
+Since Julia code needs no prior compilation, it is possible to integrate very
+tightly and natively with a larger ROS system. Just make sure you:
+
+- Keep your code inside your ROS packages as usual.
+- Ensure your main .jl script is executable (e.g., `chmod a+x main.jl`) and has
+the hint to the Julia binary as the first line (`#!/usr/bin/env julia`).
+
+Now your Julia code will run exactly like any python script that gets invoked
+through `rosrun` or `roslaunch`. And since `include` takes paths relative to
+the location of the calling file, you can bring in whatever other modules or
+functions reside in your package from the single executable script.
+
+    #!/usr/bin/env julia
+    #main.jl in thebot_pkg/src
+    include("MyRobot/TheBot.jl")
+
+    using RobotOS
+    using TheBot
+    #...
+
 ## Full example
 
 This example demonstrates publishing a random `geometry_msgs/Point` message at
 5 Hz. It also listens for incoming `geometry_msgs/Pose2D` messages and
 republishes them as Points.
+
+    #!/usr/bin/env julia
 
     using RobotOS
     usepkg("geometry_msgs", "Point", "Pose2D")
