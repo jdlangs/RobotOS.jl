@@ -221,7 +221,19 @@ function buildtype(typ::String, members::Vector)
             memexpr = :($namesym::Array{$j_typ,1})
             defexpr = Expr(:call, :fill, j_def, arraylen)
             jlconexpr = :(jl.$namesym = convert(Array{$j_typ,1}, o[$namestr]))
-            pyconexpr = :(py[$namestr] = PyVector(o.$namesym))
+
+            #uint8[] is string in rospy and PyCall's conversion to bytearray is
+            #rejected by ROS
+            if j_typ == :Uint8
+                pyconexpr = :(py[$namestr] =
+                    pycall(pybuiltin("str"), PyObject, PyObject(o.$namesym))
+                )
+            elseif _isrostype(typ)
+                pyconexpr = :(py[$namestr] =
+                    convert(Array{PyObject,1}, o.$namesym))
+            else
+                pyconexpr = :(py[$namestr] = o.$namesym)
+            end
         else
             memexpr = :($namesym::$j_typ)
             defexpr = j_def
