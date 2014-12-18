@@ -1,5 +1,3 @@
-TESTENV = true
-
 using RobotOS
 using Base.Test
 
