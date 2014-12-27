@@ -14,5 +14,9 @@ before_script:
   - source /opt/ros/hydro/setup.sh
   - roscore &
   - sleep 5
+  - python test/republish.py &
+  - sleep 5
 after_script:
   - killall roscore
+  - killall python
+  - sleep 5
