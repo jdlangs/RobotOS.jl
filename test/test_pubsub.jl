@@ -32,7 +32,7 @@ for i=1:Nmsgs
     publish(ros_pub, refs[i])
     RobotOS.sleep(r)
 end
-sleep(1.0)
+RobotOS.sleep(1.0)
 
 @test length(msgs) == Nmsgs
 for i=1:Nmsgs
