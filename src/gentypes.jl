@@ -58,9 +58,6 @@ function _addtype(pkg::String, name::String)
 end
 
 function gentypes()
-    if ! isempty(_rospy_classes)
-        error("Message regeneration not supported!")
-    end
     pkg_deps = Dict{ASCIIString, Set{ASCIIString}}()
     typ_deps = Dict{ASCIIString, Set{ASCIIString}}()
     for (pkg, names) in _rostypes
@@ -123,26 +120,29 @@ function buildmodule(modname::String, deps::Set, types::Vector)
     modsym = symbol(modname)
     eval(Expr(:toplevel, :(module ($modsym) end)))
     mod = eval(modsym)
+    modexprs = Expr[]
 
     #Import/exports so the generated code can use external names
     pymod = symbol(string("py_",modname))
-    eval(mod, Expr(:using, :PyCall))
-    eval(mod, Expr(:import, :., :., pymod))
-    eval(mod, Expr(:block, 
-        Expr(:using, :., :., :MsgT),
-        Expr(:using, :., :., :Time),
-        Expr(:using, :., :., :Duration),
-        Expr(:using, :., :., :typezero),
-    ))
-    eval(mod, Expr(:import, :Base, :convert))
+    push!(modexprs, 
+        quote
+            import Base.convert
+            using PyCall
+            import RobotOS.pymod
+            using  RobotOS.MsgT
+            using  RobotOS.Time
+            using  RobotOS.Duration
+            using  RobotOS.typezero
+        end
+    )
     for m in deps
-        eval(mod, Expr(:using, :., :., symbol(m)))
+        push!(modexprs, Expr(:using, symbol(m)))
     end
     exports = Expr(:export)
     for typ in types
         push!(exports.args, symbol(_pkg_name_strs(typ)[2]))
     end
-    eval(mod, exports)
+    push!(modexprs, exports)
 
     #Type creation
     for typ in types
@@ -153,7 +153,7 @@ function buildmodule(modname::String, deps::Set, types::Vector)
         typeexprs = buildtype(typ, members)
 
         for ex in typeexprs 
-            eval(mod, ex)
+            push!(modexprs, ex)
         end
         @eval _jltype_strs[$mod.$(symbol(msg))] = $typ
     end
