@@ -1,7 +1,7 @@
 #Test publish and subscribe ability
 #works alongside republish.py
 
-using RobotOS.geometry_msgs
+using geometry_msgs.msg
 init_node("jltest", anonymous=true)
 
 const Nmsgs = 10
