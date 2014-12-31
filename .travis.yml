@@ -2,3 +2,21 @@ language: julia
 julia:
   - release
   - nightly
+before_install:
+  - sudo apt-add-repository -y "deb http://packages.ros.org/ros/ubuntu precise main"
+  - wget https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -O - | sudo apt-key add -
+  - sudo apt-get update
+  - sudo apt-get -y install ros-hydro-ros-base
+  - sudo apt-get -y install ros-hydro-common-msgs
+  - sudo rosdep init
+  - rosdep update
+before_script:
+  - source /opt/ros/hydro/setup.sh
+  - roscore &
+  - sleep 5
+  - python test/republish.py &
+  - sleep 5
+after_script:
+  - killall roscore
+  - killall python
+  - sleep 5
