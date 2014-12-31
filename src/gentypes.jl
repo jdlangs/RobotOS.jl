@@ -116,10 +116,7 @@ end
 
 #Create the new module and build the new types inside
 function buildmodule(modname::String, deps::Set, types::Vector)
-    #Create module
-    modsym = symbol(modname)
-    eval(Expr(:toplevel, :(module ($modsym) end)))
-    mod = eval(modsym)
+    #Module interior code expressions
     modexprs = Expr[]
 
     #Import/exports so the generated code can use external names
@@ -128,15 +125,16 @@ function buildmodule(modname::String, deps::Set, types::Vector)
         quote
             import Base.convert
             using PyCall
-            import RobotOS.pymod
+            import RobotOS
             using  RobotOS.MsgT
             using  RobotOS.Time
             using  RobotOS.Duration
             using  RobotOS.typezero
         end
     )
+    push!(modexprs, Expr(:import, :RobotOS, pymod))
     for m in deps
-        push!(modexprs, Expr(:using, symbol(m)))
+        push!(modexprs, Expr(:using, symbol(m), :msg))
     end
     exports = Expr(:export)
     for typ in types
@@ -146,7 +144,6 @@ function buildmodule(modname::String, deps::Set, types::Vector)
 
     #Type creation
     for typ in types
-        pkg, msg = _pkg_name_strs(typ)
         memnames = _rospy_classes[typ]["__slots__"]
         memtypes = _rospy_classes[typ]["_slot_types"]
         members = [zip(memnames, memtypes)...]
@@ -155,9 +152,22 @@ function buildmodule(modname::String, deps::Set, types::Vector)
         for ex in typeexprs 
             push!(modexprs, ex)
         end
-        @eval _jltype_strs[$mod.$(symbol(msg))] = $typ
     end
-    nothing
+    #Create module
+    msgmod = :(module msg end)
+    append!(msgmod.args[3].args, modexprs)
+
+    modsym = symbol(modname)
+    modexp = Expr(:toplevel, :(module ($modsym) end))
+    push!(modexp.args[1].args[3].args, msgmod)
+
+    eval(Main, modexp)
+    m = eval(Main, modsym)
+    for t in types
+        msgsym = symbol(_pkg_name_strs(t)[2])
+        @eval _jltype_strs[$m.msg.$msgsym] = $t
+    end
+    mod
 end
 
 #Generate code for a native Julia message type
@@ -183,7 +193,10 @@ function buildtype(typ::String, members::Vector)
     )
     #Convert from PyObject
     exprs[3] = :(
-        convert(::Type{$nsym}, o::PyObject) = begin
+        convert(jlt::Type{$nsym}, o::PyObject) = begin
+            if o[:_type] != RobotOS._jltype_strs[jlt]
+                throw(InexactError())
+            end
             jl = $nsym()
             jl
         end
