@@ -1,10 +1,10 @@
 #Generate Julia composite types for ROS messages
 using Compat
 
-_rostypes = Dict{ASCIIString, Vector{ASCIIString}}()
-_rospy_classes = Dict{ASCIIString, PyObject}()
-_jltype_strs = Dict{DataType, ASCIIString}()
-_ros_builtin_types = @compat Dict{ASCIIString, Symbol}(
+const _rospy_classes = Dict{ASCIIString, PyObject}()
+const _ros_typ_deps = Dict{ASCIIString, Set{ASCIIString}}()
+const _jltype_strs = Dict{DataType, ASCIIString}()
+const _ros_builtin_types = @compat Dict{ASCIIString, Symbol}(
     "bool"    => :Bool,
     "int8"    => :Int8,
     "int16"   => :Int16,
@@ -27,55 +27,86 @@ typezero(::Type{Duration}) = Duration(0,0)
 
 abstract MsgT
 
-function usetypes(types::Dict)
-    for (pkg,names) in types
-        for n in names
-            _addtype(pkg,n)
+# Valid calls:
+# @rosimport pkg.msg.Type
+# @rosimport pkg.msg: Type
+# @rosimport pkg.msg: Type1, Type2
+
+#Rearranges the expression into a RobotOS._usepkg call. Input comes in as a
+#single package qualified expression, or as a tuple expression where the first
+#element is the same as the single expression case. Most of the code is just
+#error checking that the input takes that form.
+macro rosimport(input)
+    @assert input.head in [:tuple, :(.), :(:)] "Improper @rosimport input"
+    if input.head == :tuple
+        @assert isa(input.args[1], Expr) "Improper @rosimport input"
+        @assert input.args[1].head == :(:) "First argument needs ':' following"
+        types = ASCIIString[]
+        pkg, typ = _pkgtype_import(input.args[1])
+        push!(types, typ)
+        for t in input.args[2:end]
+            @assert isa(t, Symbol) "Type name ($(string(t))) not a symbol"
+            push!(types, string(t))
         end
-    end
-end
-function usetypes(names::String...)
-    for n in names
-        if _isrostype(n)
-            _addtype(_pkg_name_strs(n)...)
-        else
-            error("Invalid ros type: $n")
-        end
-    end
-end
-function usepkg(pkg::String, names::String...)
-    for n in names
-        _addtype(pkg, n)
-    end
-end
-function _addtype(pkg::String, name::String)
-    if ! haskey(_rostypes, pkg)
-        _rostypes[pkg] = Vector{ASCIIString}[]
-    end
-    if ! (name in _rostypes[pkg])
-        push!(_rostypes[pkg], name)
+        return :(_usepkg($pkg, $types...))
+    else
+        pkg, typ = _pkgtype_import(input)
+        return :(_usepkg($pkg, $typ))
     end
 end
 
-function gentypes()
-    pkg_deps = Dict{ASCIIString, Set{ASCIIString}}()
-    typ_deps = Dict{ASCIIString, Set{ASCIIString}}()
-    for (pkg, names) in _rostypes
-        for n in names
-            typestr = pkg * "/" * n
-            importtype(typestr, pkg_deps, typ_deps)
-        end
+#Return the pkg and types strings for a single expression of form:
+#  pkg.msg.type or pkg.msg:type
+function _pkgtype_import(input::Expr)
+    @assert input.head in [:(.), :(:)]
+    @assert isa(input.args[1], Expr) "Improper @rosimport input"
+    @assert input.args[1].head == :(.) "Improper @rosimport input"
+    @assert input.args[1].args[2].args[1] == :msg "Improper @rosimport input"
+    p = input.args[1].args[1]
+    @assert isa(p, Symbol) "Package name ($(string(p))) not a symbol"
+    ps = string(p)
+    ts = ""
+    if isa(input.args[2], Symbol)
+        ts = string(input.args[2])
+    elseif isa(input.args[2], Expr)
+        tsym = input.args[2].args[1]
+        @assert isa(tsym, Symbol) "Type name ($(string(tsym))) not a symbol"
+        ts = string(input.args[2].args[1])
     end
+    return ps,ts
+end
+#Import a set of types from a single package
+function _usepkg(pkg::String, names::String...)
+    for n in names
+        typestr = pkg * "/" * n
+        importtype(typestr, _ros_typ_deps)
+    end
+end
+
+#Do the Julia type generation. This function is needed because we want to
+#create the modules in one go, rather than anytime @rosimport gets called
+function gentypes()
+    pkg_deps = _typ_to_pkg_deps(_ros_typ_deps)
     pkglist = _order(pkg_deps)
     for pkg in pkglist
-        pkgtypes = filter(Regex("^$pkg/\\w+\$"), typ_deps)
+        pkgtypes = filter(Regex("^$pkg/\\w+\$"), _ros_typ_deps)
         mtypelist::Vector{ASCIIString} = _order(pkgtypes)
         buildmodule(pkg, pkg_deps[pkg], mtypelist)
     end
 end
 
+#Reset type generation process to start over with @rosimport. Does not remove
+#already generated modules! They will be replaced when gentypes is called
+#again.
+function cleartypes()
+    empty!(_ros_typ_deps)
+    empty!(_rospy_classes)
+    empty!(_jltype_strs)
+    nothing
+end
+
 #Recursively import all needed messages for a given message
-function importtype(typestr::String, pkg_deps::Dict, typ_deps::Dict)
+function importtype(typestr::String, typ_deps::Dict)
     if ! haskey(_rospy_classes,typestr)
         pkg, name = _pkg_name_strs(typestr)
         pkgi = symbol(string("py_",pkg))
@@ -87,28 +118,26 @@ function importtype(typestr::String, pkg_deps::Dict, typ_deps::Dict)
         catch ex
             error("python import error: $(ex.val[:args][1])")
         end
-        if ! haskey(pkg_deps, pkg)
-            pkg_deps[pkg] = Set{ASCIIString}()
-        end
         #Store a reference to the message class definition
         _rospy_classes[typestr] = try
             @eval $pkgi.pymember($name)
-        catch KeyError
-            error("$name not found in package: $pkg")
+        catch err
+            if isa(err, KeyError)
+                error("$name not found in package: $pkg")
+            else
+                rethrow(err)
+            end
         end
         typ_deps[typestr] = Set{ASCIIString}()
         subtypes = _rospy_classes[typestr][:_slot_types]
         for t in subtypes
             if _isrostype(t)
+                #Don't want to include the brackets in the string if present
                 t = _check_array_type(t)[1]
-                tpkg = _pkg_name_strs(t)[1]
-                if tpkg != pkg #Possibly a new module dependency
-                    push!(pkg_deps[pkg], tpkg)
-                end
                 #pushing to a set does not create duplicates
                 push!(typ_deps[typestr], t)
 
-                importtype(t, pkg_deps, typ_deps)
+                importtype(t, typ_deps)
             end
         end
     end
@@ -180,7 +209,6 @@ function buildtype(typ::String, members::Vector)
     nsym = symbol(name)
     println("Type: $name")
 
-    #Empty expressions
     exprs = Array(Expr, 4)
     #Type declaration
     exprs[1] = :(
@@ -213,7 +241,7 @@ function buildtype(typ::String, members::Vector)
     jlconargs = exprs[3].args[2].args
     pyconargs = exprs[4].args[2].args
 
-    #Now process the type members
+    #Now add the meat to the empty expressions above
     for (namestr,typ) in members
         println("\t$namestr :: $typ")
 
@@ -279,6 +307,25 @@ function _order(d::Dict)
         trecurse!(tlist, d, t)
     end
     tlist
+end
+
+#Produce a dict of package dependencies from the dependencies of the
+#fully-qualified type strings
+function _typ_to_pkg_deps(typ_deps::Dict)
+    pkg_deps = Dict{ASCIIString, Set{ASCIIString}}()
+    for (typ, deps) in collect(typ_deps)
+        tpkg = _pkg_name_strs(typ)[1]
+        if ! haskey(pkg_deps, tpkg)
+            pkg_deps[tpkg] = Set{ASCIIString}()
+        end
+        for d in deps
+            dpkg = _pkg_name_strs(d)[1]
+            if dpkg != tpkg
+                push!(pkg_deps[tpkg], dpkg)
+            end
+        end
+    end
+    pkg_deps
 end
 
 function _pkg_name_strs(typestr::String)

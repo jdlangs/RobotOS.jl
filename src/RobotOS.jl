@@ -1,6 +1,6 @@
 module RobotOS
 
-export usetypes, usepkg, gentypes,
+export @rosimport, gentypes, cleartypes,
        Time, Duration, Rate, to_sec, to_nsec, now, get_rostime, sleep,
        Publisher, Subscriber, publish,
        init_node, is_shutdown, spin,
