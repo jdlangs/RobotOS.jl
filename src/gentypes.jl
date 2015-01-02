@@ -27,11 +27,6 @@ typezero(::Type{Duration}) = Duration(0,0)
 
 abstract MsgT
 
-# Valid calls:
-# @rosimport pkg.msg.Type
-# @rosimport pkg.msg: Type
-# @rosimport pkg.msg: Type1, Type2
-
 #Rearranges the expression into a RobotOS._usepkg call. Input comes in as a
 #single package qualified expression, or as a tuple expression where the first
 #element is the same as the single expression case. Most of the code is just
@@ -71,7 +66,7 @@ function _pkgtype_import(input::Expr)
     elseif isa(input.args[2], Expr)
         tsym = input.args[2].args[1]
         @assert isa(tsym, Symbol) "Type name ($(string(tsym))) not a symbol"
-        ts = string(input.args[2].args[1])
+        ts = string(tsym)
     end
     return ps,ts
 end

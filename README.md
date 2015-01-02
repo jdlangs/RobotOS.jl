@@ -28,37 +28,38 @@ directly to version 1.0.
 
 ## Usage: Type Generation
 
-To use the package, first specify the ROS message types you want to use in your
-system as strings "_package_/_message_". All the needed dependencies will be
-automatically included. There are three interface functions to do this. For
-example:
+ROS message types are brought into your program with the `@rosimport` macro
+which specifies a package and one or more types. The three valid forms can be
+seen here:
 
-    usetypes("geometry_msgs/Pose", "nav_msgs/Path")
-    usetypes(Dict("sensor_msgs" => ["Imu", "NavSatFix"], "std_msgs" => ["Header"]))
-    usepkg("geometry_msgs", "PoseStamped", "Point", "Vector3")
+    @rosimport std_msgs.msg.Header
+    @rosimport geometry_msgs.msg: PoseStamped
+    @rosimport sensor_msgs.msg: Imu, Image
 
-The first `usetypes` takes a variable number of fully qualified message
-strings. The second takes a Dict mapping package names to lists of messages,
-possibly useful for a large number of messages all at once. The final form,
-`usepkg`, takes the package name as the first argument, followed by a variable
-number of message names.
-
-Any number of these three functions can be called as needed to specify the
-desired message types to generate. When finished, initiate the message
-generation with:
+`@rosimport` will bring in the python modules for the requested type and all
+its dependencies but the native Julia types are not created yet since any
+inter-module dependencies have to be resolved first. After the final
+`@rosimport` call, initiate the message generation with:
 
     gentypes()
 
-The new types will be placed in newly created submodules in `RobotOS`,
-corresponding to the packages requested. For example, `"std_msgs/Header" =>
-RobotOS.std_msgs.Header`. After calling `gentypes()` they can be interacted with
+The new types will be placed in newly created modules in `Main`, corresponding
+to the packages requested. For example, `"std_msgs/Header" =>
+std_msgs.msg.Header`. After calling `gentypes()` they can be interacted with
 just like regular modules with `import` and `using` statements bringing the
 generated type names into the local namespace.
 
-    using RobotOS.nav_msgs
-    import RobotOS.geometry_msgs: Pose, Vector3
+    using nav_msgs.msg
+    import geometry_msgs.msg: Pose, Vector3
     p = Path()
     v = Vector3(1.1,2.2,3.3)
+
+An additional function, `cleartypes()`, resets the type generation process,
+possibly useful for development in the REPL. When invoked, new `@rosimport`
+calls will be needed to generate the same or different types, and previously
+generated modules will be overwritten after `gentypes()` is called again.  Keep
+in mind that names cannot be cleared once defined so if a module is not
+regenerated, the first version will remain.
 
 ## Usage: ROS API
 
@@ -97,7 +98,7 @@ amount implied by type and value of the `t` parameter.
 Publishing messages is the same as in rospy, except use the `publish` method,
 paired with a Publisher object. For example:
 
-    using RobotOS.geometry_msgs
+    using geometry_msgs.msg
     pub = Publisher{PointStamped}("topic", queue_size = 10) #or...
     #pub = Publisher("topic", PointStamped, queue_size = 10)
     msg = PointStamped()
@@ -116,7 +117,7 @@ callback is invoked. Note that it must be passed as a tuple, even if there is
 only a single argument. And again, keyword arguments are directly forwarded. An
 example:
 
-    using RobotOS.sensor_msgs
+    using sensor_msgs.msg
     cb1(msg::Imu, a::String) = println(a,": ",msg.linear_acceleration.x)
     cb2(msg::Imu) = println(msg.angular_velocity.z)
     sub1 = Subscriber{Imu}("topic", cb1, ("accel",), queue_size = 10) #or...
@@ -135,7 +136,7 @@ Since Julia code needs no prior compilation, it is possible to integrate very
 tightly and natively with a larger ROS system. Just make sure you:
 
 - Keep your code inside your ROS packages as usual.
-- Ensure your main .jl script is executable (e.g., `chmod a+x main.jl`) and has
+- Ensure your .jl script is executable (e.g., `chmod a+x script.jl`) and has
 the hint to the Julia binary as the first line (`#!/usr/bin/env julia`).
 
 Now your Julia code will run exactly like any python script that gets invoked
@@ -145,10 +146,10 @@ functions reside in your package from the single executable script.
 
     #!/usr/bin/env julia
     #main.jl in thebot_pkg/src
-    include("MyRobot/TheBot.jl")
+    include("BotSrc/Bot.jl")
 
     using RobotOS
-    using TheBot
+    using Bot
     #...
 
 ## Full example
@@ -160,9 +161,9 @@ republishes them as Points.
     #!/usr/bin/env julia
 
     using RobotOS
-    usepkg("geometry_msgs", "Point", "Pose2D")
+    @rosimport geometry_msgs.msg: Point, Pose2D
     gentypes()
-    using RobotOS.geometry_msgs
+    using geometry_msgs.msg
 
     callback(msg::Pose2D, pub_obj::Publisher{Point}) = begin
         pt_msg = Point(msg.x, msg.y, 0.0)
@@ -182,3 +183,4 @@ republishes them as Points.
 ## Versions
 
 - `0.1.0` : Initial release
+- `0.2.0` : Changed type gen API and moved generated modules to Main
