@@ -1,4 +1,6 @@
-import Base: convert, isless
+#All time related types and functions
+
+import Base: convert, isless, sleep, now
 
 #Time type definitions
 abstract TVal
