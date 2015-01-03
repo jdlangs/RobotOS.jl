@@ -96,5 +96,5 @@ end
 now() = get_rostime()
 
 sleep(t::Duration) = __rospy__.sleep(convert(PyObject, t))
-sleep(t::FloatingPoint) = __rospy__.sleep(t)
+sleep(t::Real) = __rospy__.sleep(t)
 sleep(r::Rate) = pycall(r.o["sleep"], PyAny)
