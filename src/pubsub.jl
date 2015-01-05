@@ -19,7 +19,9 @@ type Subscriber{MsgType<:MsgT}
     o::PyObject
     callback::Function
 
-    function Subscriber(topic::String, cb::Function, cb_args = (); kwargs...)
+    function Subscriber(
+        topic::String, cb::Function, cb_args::(Any...,) = (); kwargs...
+    )
         rospycls = _get_rospy_class(MsgType)
         jl_callback(msg::PyObject) = cb(convert(MsgType, msg), cb_args...)
         return new(
@@ -32,7 +34,7 @@ Subscriber{MsgType<:MsgT}(
     topic::String,
     ::Type{MsgType},
     cb::Function,
-    cb_args=();
+    cb_args::(Any...,) = ();
     kwargs...
 ) = Subscriber{MsgType}(topic, cb, cb_args; kwargs...)
 
