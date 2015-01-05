@@ -36,19 +36,16 @@ Subscriber{MsgType<:MsgT}(
     kwargs...
 ) = Subscriber{MsgType}(topic, cb, cb_args; kwargs...)
 
-#Utility func to form a full string of the type including which module it's in
-#This works in v0.4 and avoids the need to keep a Dict in the ROS module
-#function _type_to_string(typ::DataType)
-    #mod_str = split(string(Base.function_module(typ)), '.')[end]
-    #"$mod_str/$typ"
-#end
-
 function _get_rospy_class(typ::DataType)
     rospycls =
         try
-            _rospy_classes[_jltype_strs[typ]] #_type_to_string(typ)
-        catch KeyError
-            error("Type ($typ) is not generated or not publishable")
+            _rospy_classes[RobotOS._typerepr(typ)]
+        catch ex
+            if isa(ex, KeyError)
+                error("Type ($typ) is not generated")
+            else
+                error("Type ($typ) is not a valid message type")
+            end
         end
     rospycls
 end

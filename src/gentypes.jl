@@ -3,7 +3,6 @@ using Compat
 
 const _rospy_classes = Dict{ASCIIString, PyObject}()
 const _ros_typ_deps = Dict{ASCIIString, Set{ASCIIString}}()
-const _jltype_strs = Dict{DataType, ASCIIString}()
 const _ros_builtin_types = @compat Dict{ASCIIString, Symbol}(
     "bool"    => :Bool,
     "int8"    => :Int8,
@@ -96,7 +95,6 @@ end
 function cleartypes()
     empty!(_ros_typ_deps)
     empty!(_rospy_classes)
-    empty!(_jltype_strs)
     nothing
 end
 
@@ -116,11 +114,11 @@ function importtype(typestr::String, typ_deps::Dict)
         #Store a reference to the message class definition
         _rospy_classes[typestr] = try
             @eval $pkgi.pymember($name)
-        catch err
-            if isa(err, KeyError)
+        catch ex
+            if isa(ex, KeyError)
                 error("$name not found in package: $pkg")
             else
-                rethrow(err)
+                rethrow(ex)
             end
         end
         typ_deps[typestr] = Set{ASCIIString}()
@@ -148,12 +146,13 @@ function buildmodule(modname::String, deps::Set, types::Vector)
     push!(modexprs, 
         quote
             import Base.convert
-            using PyCall
+            using  PyCall
             import RobotOS
             using  RobotOS.MsgT
             using  RobotOS.Time
             using  RobotOS.Duration
             using  RobotOS.typezero
+            import RobotOS._typerepr
         end
     )
     push!(modexprs, Expr(:import, :RobotOS, pymod))
@@ -186,11 +185,7 @@ function buildmodule(modname::String, deps::Set, types::Vector)
     push!(modexp.args[1].args[3].args, msgmod)
 
     eval(Main, modexp)
-    m = eval(Main, modsym)
-    for t in types
-        msgsym = symbol(_pkg_name_strs(t)[2])
-        @eval _jltype_strs[$m.msg.$msgsym] = $t
-    end
+    mod = eval(Main, modsym)
     mod
 end
 
@@ -198,8 +193,8 @@ end
 #  - type/member declarations
 #  - default constructor
 #  - convert to/from PyObject
-function buildtype(typ::String, members::Vector)
-    pkg, name = _pkg_name_strs(typ)
+function buildtype(typename::String, members::Vector)
+    pkg, name = _pkg_name_strs(typename)
     pymod = symbol(string("py_",pkg))
     nsym = symbol(name)
     println("Type: $name")
@@ -210,6 +205,7 @@ function buildtype(typ::String, members::Vector)
         type $nsym <: MsgT
         end
     )
+
     #Default constructor
     exprs[2] = :(
         $nsym() = $nsym()
@@ -217,7 +213,7 @@ function buildtype(typ::String, members::Vector)
     #Convert from PyObject
     exprs[3] = :(
         convert(jlt::Type{$nsym}, o::PyObject) = begin
-            if o[:_type] != RobotOS._jltype_strs[jlt]
+            if o[:_type] != _typerepr(jlt)
                 throw(InexactError())
             end
             jl = $nsym()
@@ -281,6 +277,7 @@ function buildtype(typ::String, members::Vector)
         insert!(jlconargs, length(jlconargs), jlconexpr)
         insert!(pyconargs, length(pyconargs), pyconexpr)
     end
+    push!(exprs, :(_typerepr(::Type{$nsym}) = $typename))
     return exprs
 end 
 
@@ -352,3 +349,7 @@ function _check_array_type(typ::String)
     end
     btype, arraylen
 end
+
+#Default method to get the "pkg/type" string from a generated DataType.
+#Extended by the generated modules.
+_typerepr{T}(::Type{T}) = error("Not a ROS type")
