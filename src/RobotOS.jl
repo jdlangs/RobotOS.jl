@@ -7,6 +7,10 @@ export @rosimport, gentypes, cleartypes,
        get_param, has_param, set_param, delete_param,
        logdebug, loginfo, logwarn, logerr, logfatal
 
+#Code can check this and output debugging info if true
+_verbose = false
+verbose(v::Bool) = global _verbose = v
+
 using PyCall
 const __rospy__ = try
     pywrap(pyimport("rospy"))
