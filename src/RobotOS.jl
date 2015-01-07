@@ -9,7 +9,7 @@ export @rosimport, gentypes, cleartypes,
 
 #Interior code can use this macro for debugging output
 macro debug(expr, other...)
-    :(if _verbose println($(esc(expr)),$(other...)) end)
+    :(if _debug_output println($expr,$(other...)) end)
 end
 _debug_output = false
 debug(d::Bool) = global _debug_output = d
