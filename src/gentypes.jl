@@ -104,9 +104,7 @@ end
 #Recursively import all needed messages for a given message
 function importtype(typestr::String, typ_deps::Dict)
     if ! haskey(_rospy_classes,typestr)
-        if _verbose
-            println("Importing: ", typestr)
-        end
+        @debug("Importing: ", typestr)
         pkg, name = _pkg_name_strs(typestr)
         pkgi = symbol(string("py_",pkg))
         pkgsym = symbol(pkg)
@@ -203,9 +201,7 @@ function buildtype(typename::String, members::Vector)
     pkg, name = _pkg_name_strs(typename)
     pymod = symbol(string("py_",pkg))
     nsym = symbol(name)
-    if _verbose
-        println("Type: $name")
-    end
+    @debug("Type: $name")
 
     exprs = Array(Expr, 4)
     #Type declaration
@@ -242,9 +238,7 @@ function buildtype(typename::String, members::Vector)
 
     #Now add the meat to the empty expressions above
     for (namestr,typ) in members
-        if _verbose
-            println("\t$namestr :: $typ")
-        end
+        @debug("\t$namestr :: $typ")
         if typ == "char" || typ == "byte"
             warn("Use of type '$typ' is deprecated in message definitions, ",
             "use '$(lowercase(string(_ros_builtin_types[typ])))' instead.")

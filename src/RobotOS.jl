@@ -7,9 +7,12 @@ export @rosimport, gentypes, cleartypes,
        get_param, has_param, set_param, delete_param,
        logdebug, loginfo, logwarn, logerr, logfatal
 
-#Code can check this and output debugging info if true
-_verbose = false
-verbose(v::Bool) = global _verbose = v
+#Interior code can use this macro for debugging output
+macro debug(expr, other...)
+    :(if _verbose println($(esc(expr)),$(other...)) end)
+end
+_debug_output = false
+debug(d::Bool) = global _debug_output = d
 
 using PyCall
 const __rospy__ = try
