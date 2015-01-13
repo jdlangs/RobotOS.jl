@@ -195,8 +195,8 @@ end
 
 #Generate code for a native Julia message type
 #  - type/member declarations
-#  - default constructor
 #  - convert to/from PyObject
+#  - default constructor
 function buildtype(typename::String, members::Vector)
     pkg, name = _pkg_name_strs(typename)
     pymod = symbol(string("py_",pkg))
@@ -207,34 +207,38 @@ function buildtype(typename::String, members::Vector)
     #Type declaration
     exprs[1] = :(
         type $nsym <: MsgT
+            #Generated code here
         end
     )
-
-    #Default constructor
-    exprs[2] = :(
-        $nsym() = $nsym()
-    )
     #Convert from PyObject
-    exprs[3] = :(
+    exprs[2] = :(
         convert(jlt::Type{$nsym}, o::PyObject) = begin
             if o[:_type] != _typerepr(jlt)
                 throw(InexactError())
             end
             jl = $nsym()
+            #Generated code here
             jl
         end
     )
     #Convert to PyObject
-    exprs[4] = :(
+    exprs[3] = :(
         convert(::Type{PyObject}, o::$nsym) = begin
             py = ($pymod.$nsym)()
+            #Generated code here
             py
         end
     )
+    #Default constructor, but only if the type has members
+    exprs[4] = if length(members) > 0
+        :($nsym() = $nsym()) #Generated code inside previous parens
+    else
+        :()
+    end
     typeargs  = exprs[1].args[3].args
-    consargs  = exprs[2].args[2].args
-    jlconargs = exprs[3].args[2].args
-    pyconargs = exprs[4].args[2].args
+    jlconargs = exprs[2].args[2].args
+    pyconargs = exprs[3].args[2].args
+    consargs  = length(members) > 0 ? exprs[4].args[2].args : nothing
 
     #Now add the meat to the empty expressions above
     for (namestr,typ) in members
@@ -281,9 +285,9 @@ function buildtype(typename::String, members::Vector)
             pyconexpr = :(py[$namestr] = convert(PyObject, o.$namesym))
         end
         push!(typeargs, memexpr)
-        push!(consargs, defexpr)
         insert!(jlconargs, length(jlconargs), jlconexpr)
         insert!(pyconargs, length(pyconargs), pyconexpr)
+        push!(consargs, defexpr)
     end
     push!(exprs, :(_typerepr(::Type{$nsym}) = $typename))
     return exprs
