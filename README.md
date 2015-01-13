@@ -146,9 +146,9 @@ functions reside in your package from the single executable script.
 
     #!/usr/bin/env julia
     #main.jl in thebot_pkg/src
-    include("BotSrc/Bot.jl")
-
     using RobotOS
+
+    include("BotSrc/Bot.jl")
     using Bot
     #...
 
@@ -182,5 +182,5 @@ republishes them as Points.
 
 ## Versions
 
-- `0.1.0` : Initial release
-- `0.2.0` : Changed type gen API and moved generated modules to Main
+- `0.1` : Initial release
+- `0.2` : Changed type gen API and moved generated modules to Main
