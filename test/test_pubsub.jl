@@ -16,6 +16,7 @@ end
 function pose_cb(msg::PoseStamped, msgs::Vector{PoseStamped})
     if msg.header.stamp.secs > 1.
         push!(msgs, msg)
+        println("Got message #",msg.header.seq)
     end
 end
 pose_cb(PoseStamped(), msgs)
@@ -33,6 +34,7 @@ for i=1:Nmsgs
     RobotOS.sleep(r)
 end
 RobotOS.sleep(1.0)
+println("Received ",length(msgs)," / ",Nmsgs)
 
 @test length(msgs) == Nmsgs
 for i=1:Nmsgs
