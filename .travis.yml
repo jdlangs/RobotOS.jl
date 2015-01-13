@@ -2,6 +2,10 @@ language: julia
 julia:
   - release
   - nightly
+branches:
+  except:
+    - srv
+
 before_install:
   - sudo apt-add-repository -y "deb http://packages.ros.org/ros/ubuntu precise main"
   - wget https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -O - | sudo apt-key add -

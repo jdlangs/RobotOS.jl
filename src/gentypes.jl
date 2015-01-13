@@ -39,29 +39,31 @@ macro rosimport(input)
         @assert isa(input.args[1], Expr) "Improper @rosimport input"
         @assert input.args[1].head == :(:) "First argument needs ':' following"
         types = ASCIIString[]
-        pkg, typ = _pkgtype_import(input.args[1])
+        pkg, typ, cls = _pkgtype_import(input.args[1])
         push!(types, typ)
         for t in input.args[2:end]
             @assert isa(t, Symbol) "Type name ($(string(t))) not a symbol"
             push!(types, string(t))
         end
-        return :(_usepkg($pkg, $types...))
+        return :(_usepkg($pkg, $cls, $types...))
     else
-        pkg, typ = _pkgtype_import(input)
-        return :(_usepkg($pkg, $typ))
+        pkg, typ, cls = _pkgtype_import(input)
+        return :(_usepkg($pkg, $cls, $typ))
     end
 end
 
 #Return the pkg and types strings for a single expression of form:
-#  pkg.msg.type or pkg.msg:type
+#  pkg.[msg|srv].type or pkg.[msg|srv]:type
 function _pkgtype_import(input::Expr)
-    @assert input.head in [:(.), :(:)]
+    xdump(input)
+    @assert input.head in (:(.), :(:))
     @assert isa(input.args[1], Expr) "Improper @rosimport input"
     @assert input.args[1].head == :(.) "Improper @rosimport input"
-    @assert input.args[1].args[2].args[1] == :msg "Improper @rosimport input"
+    @assert input.args[1].args[2].args[1] in (:msg,:srv) "Improper @rosimport input"
     p = input.args[1].args[1]
     @assert isa(p, Symbol) "Package name ($(string(p))) not a symbol"
     ps = string(p)
+    cls = string(input.args[1].args[2].args[1])
     ts = ""
     if isa(input.args[2], Symbol)
         ts = string(input.args[2])
@@ -70,7 +72,7 @@ function _pkgtype_import(input::Expr)
         @assert isa(tsym, Symbol) "Type name ($(string(tsym))) not a symbol"
         ts = string(tsym)
     end
-    return ps,ts
+    return ps,ts,cls
 end
 #Import a set of types from a single package
 function _usepkg(pkg::String, names::String...)
@@ -102,16 +104,21 @@ function cleartypes()
 end
 
 #Recursively import all needed messages for a given message
-function importtype(typestr::String, typ_deps::Dict)
+function importtype(typestr::String, cls::String, typ_deps::Dict)
+    @assert cls in ("msg","srv") "$(typestr) must be a message or a service"
     if ! haskey(_rospy_classes,typestr)
         @debug("Importing: ", typestr)
         pkg, name = _pkg_name_strs(typestr)
-        pkgi = symbol(string("py_",pkg))
         pkgsym = symbol(pkg)
 
         #Import python ROS module, no effect if already there
         try
-            @eval @pyimport $pkgsym.msg as $pkgi
+            if cls == "msg"
+                pkgi = symbol(string("py_",pkg,"_msg"))
+                @eval @pyimport $pkgsym.msg as $pkgi
+            elseif cls == "srv"
+                pkgi = symbol(string("py_",pkg,"_srv"))
+                @eval @pyimport $pkgsym.srv as $pkgi
         catch ex
             error("python import error: $(ex.val[:args][1])")
         end
