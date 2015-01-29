@@ -66,6 +66,7 @@ function _pkgtype_import(input::Expr)
     if isa(input.args[2], Symbol)
         ts = string(input.args[2])
     elseif isa(input.args[2], Expr)
+        @assert length(input.args[2].args) == 1 "Type name not a symbol"
         tsym = input.args[2].args[1]
         @assert isa(tsym, Symbol) "Type name ($(string(tsym))) not a symbol"
         ts = string(tsym)

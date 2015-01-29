@@ -41,12 +41,12 @@ function _canonical_time(secs::Integer, nsecs::Integer)
 end
 
 #Temporal arithmetic
-+(t1::Time, t2::Duration) = Time(t1.secs+t2.secs, t1.nsecs+t2.nsecs)
-+(t1::Duration, t2::Time) = Time(t1.secs+t2.secs, t1.nsecs+t2.nsecs)
++(t1::Time,     t2::Duration) = Time(    t1.secs+t2.secs, t1.nsecs+t2.nsecs)
++(t1::Duration, t2::Time)     = Time(    t1.secs+t2.secs, t1.nsecs+t2.nsecs)
 +(t1::Duration, t2::Duration) = Duration(t1.secs+t2.secs, t1.nsecs+t2.nsecs)
--(t1::Time, t2::Duration) = Time(t1.secs-t2.secs, t1.nsecs-t2.nsecs)
+-(t1::Time,     t2::Duration) = Time(    t1.secs-t2.secs, t1.nsecs-t2.nsecs)
 -(t1::Duration, t2::Duration) = Duration(t1.secs-t2.secs, t1.nsecs-t2.nsecs)
--(t1::Time, t2::Time) = Duration(t1.secs-t2.secs, t1.nsecs-t2.nsecs)
+-(t1::Time,     t2::Time)     = Duration(t1.secs-t2.secs, t1.nsecs-t2.nsecs)
 
 #PyObject conversions
 convert(::Type{Time},     o::PyObject) = Time    (o[:secs],o[:nsecs])
