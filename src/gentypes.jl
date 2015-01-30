@@ -27,6 +27,7 @@ typezero(::Type{ASCIIString}) = ""
 typezero(::Type{Time}) = Time(0,0)
 typezero(::Type{Duration}) = Duration(0,0)
 
+#Abstract supertype of all generated types
 abstract MsgT
 
 #Rearranges the expression into a RobotOS._usepkg call. Input comes in as a
@@ -39,31 +40,30 @@ macro rosimport(input)
         @assert isa(input.args[1], Expr) "Improper @rosimport input"
         @assert input.args[1].head == :(:) "First argument needs ':' following"
         types = ASCIIString[]
-        pkg, typ, cls = _pkgtype_import(input.args[1])
+        pkg, typ = _pkgtype_import(input.args[1])
         push!(types, typ)
         for t in input.args[2:end]
             @assert isa(t, Symbol) "Type name ($(string(t))) not a symbol"
             push!(types, string(t))
         end
-        return :(_usepkg($pkg, $cls, $types...))
+        return :(_usepkg($pkg, $types...))
     else
-        pkg, typ, cls = _pkgtype_import(input)
-        return :(_usepkg($pkg, $cls, $typ))
+        pkg, typ = _pkgtype_import(input)
+        return :(_usepkg($pkg, $typ))
     end
 end
 
 #Return the pkg and types strings for a single expression of form:
 #  pkg.[msg|srv].type or pkg.[msg|srv]:type
 function _pkgtype_import(input::Expr)
-    xdump(input)
     @assert input.head in (:(.), :(:))
     @assert isa(input.args[1], Expr) "Improper @rosimport input"
     @assert input.args[1].head == :(.) "Improper @rosimport input"
-    @assert input.args[1].args[2].args[1] in (:msg,:srv) "Improper @rosimport input"
     p = input.args[1].args[1]
     @assert isa(p, Symbol) "Package name ($(string(p))) not a symbol"
-    ps = string(p)
-    cls = string(input.args[1].args[2].args[1])
+    m_or_s = input.args[1].args[2].args[1]
+    @assert m_or_s in (:msg,:srv) "Improper @rosimport input"
+    ps = string(input.args[1])
     ts = ""
     if isa(input.args[2], Symbol)
         ts = string(input.args[2])
@@ -72,13 +72,20 @@ function _pkgtype_import(input::Expr)
         @assert isa(tsym, Symbol) "Type name ($(string(tsym))) not a symbol"
         ts = string(tsym)
     end
-    return ps,ts,cls
+    return ps,ts
 end
 #Import a set of types from a single package
-function _usepkg(pkg::String, names::String...)
+function _usepkg(package::String, names::String...)
+    pkg, m_or_s = split(package,'.')
     for n in names
-        typestr = pkg * "/" * n
-        importtype(typestr, _ros_typ_deps)
+        if m_or_s == "srv"
+            importtype(string(pkg,"/",n,"Request" ), :srv, _ros_typ_deps)
+            importtype(string(pkg,"/",n,"Response"), :srv, _ros_typ_deps)
+        elseif m_or_s == "msg"
+            importtype(string(pkg,"/",n), :msg, _ros_typ_deps)
+        else
+            error("Subpackage '$m_or_s' must be 'msg' or 'srv'")
+        end
     end
 end
 
@@ -104,34 +111,22 @@ function cleartypes()
 end
 
 #Recursively import all needed messages for a given message
-function importtype(typestr::String, cls::String, typ_deps::Dict)
-    @assert cls in ("msg","srv") "$(typestr) must be a message or a service"
-    if ! haskey(_rospy_classes,typestr)
-        @debug("Importing: ", typestr)
-        pkg, name = _pkg_name_strs(typestr)
-        pkgsym = symbol(pkg)
+function importtype(typestr::String, m_or_s::Symbol, typ_deps::Dict)
+    if ! haskey(_rospy_classes, typestr)
+        @debug("Importing type: ", typestr, " as ", m_or_s)
+        package, name = _pkg_name_strs(typestr)
+        pypkg_mod = import_rospy_pkg(package, m_or_s)
 
-        #Import python ROS module, no effect if already there
-        try
-            if cls == "msg"
-                pkgi = symbol(string("py_",pkg,"_msg"))
-                @eval @pyimport $pkgsym.msg as $pkgi
-            elseif cls == "srv"
-                pkgi = symbol(string("py_",pkg,"_srv"))
-                @eval @pyimport $pkgsym.srv as $pkgi
-        catch ex
-            error("python import error: $(ex.val[:args][1])")
-        end
         #Store a reference to the message class definition
-        _rospy_classes[typestr] = try
-            @eval $pkgi.pymember($name)
-        catch ex
-            if isa(ex, KeyError)
-                error("$name not found in package: $pkg")
-            else
-                rethrow(ex)
+        _rospy_classes[typestr] = 
+            try pypkg_mod.pymember(name) 
+            catch ex
+                if isa(ex, KeyError)
+                    error("$name not found in package: $package")
+                else
+                    rethrow(ex)
+                end
             end
-        end
         typ_deps[typestr] = Set{ASCIIString}()
         subtypes = _rospy_classes[typestr][:_slot_types]
         for t in subtypes
@@ -141,10 +136,30 @@ function importtype(typestr::String, cls::String, typ_deps::Dict)
                 #pushing to a set does not create duplicates
                 push!(typ_deps[typestr], t)
 
-                importtype(t, typ_deps)
+                #Dependencies will always be messages only
+                importtype(t, :msg, typ_deps)
             end
         end
     end
+end
+
+function import_rospy_pkg(package::String, m_or_s::Symbol)
+    if ! (m_or_s in (:msg,:srv))
+        error("Subpackage '$m_or_s' must be 'msg' or 'srv'")
+    end
+    pypkg = symbol(string("py_",package,"_",m_or_s))
+    pkgsym = symbol(package)
+    if ! isdefined(pypkg) #TODO: this always returns false
+        @debug("Request to import python package: ", package, ".", m_or_s)
+        try
+            @eval @pyimport ($pkgsym).($m_or_s) as $pypkg
+        catch ex
+            show(ex)
+            error("python import error: $(ex.val[:args][1])")
+        end
+    end
+    pypkg_mod = eval(pypkg)
+    pypkg_mod
 end
 
 #Create the new module and build the new types inside
