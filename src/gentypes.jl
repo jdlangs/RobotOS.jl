@@ -1,9 +1,9 @@
 #Generate Julia composite types for ROS messages
 using Compat
 
-const _rospy_classes = Dict{ASCIIString, PyObject}()
-const _ros_typ_deps = Dict{ASCIIString, Set{ASCIIString}}()
-const _ros_builtin_types = @compat Dict{ASCIIString, Symbol}(
+global const _rospy_classes = Dict{ASCIIString, PyObject}()
+global const _ros_typ_deps = Dict{ASCIIString, Set{ASCIIString}}()
+global const _ros_builtin_types = @compat Dict{ASCIIString, Symbol}(
     "bool"    => :Bool,
     "int8"    => :Int8,
     "int16"   => :Int16,
@@ -75,6 +75,7 @@ function _pkgtype_import(input::Expr)
 end
 #Import a set of types from a single package
 function _usepkg(pkg::String, names::String...)
+    global _ros_typ_deps
     for n in names
         typestr = pkg * "/" * n
         importtype(typestr, _ros_typ_deps)
@@ -84,6 +85,7 @@ end
 #Do the Julia type generation. This function is needed because we want to
 #create the modules in one go, rather than anytime @rosimport gets called
 function gentypes()
+    global _ros_typ_deps
     pkg_deps = _typ_to_pkg_deps(_ros_typ_deps)
     pkglist = _order(pkg_deps)
     for pkg in pkglist
@@ -97,6 +99,8 @@ end
 #already generated modules! They will be replaced when gentypes is called
 #again.
 function cleartypes()
+    global _ros_typ_deps
+    global _rospy_classes
     empty!(_ros_typ_deps)
     empty!(_rospy_classes)
     nothing
@@ -104,6 +108,7 @@ end
 
 #Recursively import all needed messages for a given message
 function importtype(typestr::String, typ_deps::Dict)
+    global _rospy_classes
     if ! haskey(_rospy_classes,typestr)
         @debug("Importing: ", typestr)
         pkg, name = _pkg_name_strs(typestr)
@@ -143,6 +148,7 @@ end
 
 #Create the new module and build the new types inside
 function buildmodule(modname::String, deps::Set, types::Vector)
+    global _rospy_classes
     #Module interior code expressions
     modexprs = Expr[]
 
@@ -199,6 +205,7 @@ end
 #  - convert to/from PyObject
 #  - default constructor
 function buildtype(typename::String, members::Vector)
+    global _ros_builtin_types
     pkg, name = _pkg_name_strs(typename)
     pymod = symbol(string("py_",pkg))
     nsym = symbol(name)
