@@ -14,29 +14,28 @@ function import_rospy_pkg(package::String, msgmod::Bool)
     end
 end
 
+immutable ModName
+    mod::ASCIIString
+    ismsg::Bool
+end
 type ROSModule
-    name::ASCIIString
-    msgmod::Bool
+    name::ModName
     objs::Dict{ASCIIString, PyObject}
-    deps::Vector{ROSModule}
-    function ROSModule(name::String, mtype::String)
-        mtype == "msg" || mtype == "srv" || 
-            throw(ArgumentError("'msg' or 'srv' only"))
-        ismsg = mtype == "msg"
-        new(name, ismsg, Dict{ASCIIString, PyObject}(), ROSModule[])
+    deps::Set{ModName}
+    function ROSModule(name::String, ismsg::Bool)
+        new(ModName(name, ismsg), Dict{ASCIIString, PyObject}(), Set{ModName}())
     end
 end
-
 type ROSPackage
     name::ASCIIString
     msg::ROSModule
     srv::ROSModule
     function ROSPackage(pkgname::String)
-        new(pkgname, ROSModule(pkgname, "msg"), ROSModule(pkgname, "srv"))
+        new(pkgname, ROSModule(pkgname, true), ROSModule(pkgname, false))
     end
 end
 
-const _rospy_imports = Dict{ASCIIString, ROSPackage}
+const _rospy_imports = Dict{ASCIIString, ROSPackage}()
 
 const _rospy_classes = Dict{ASCIIString, PyObject}()
 const _ros_typ_deps = Dict{ASCIIString, Set{ASCIIString}}()
@@ -78,16 +77,16 @@ macro rosimport(input)
         @assert isa(input.args[1], Expr) "Improper @rosimport input"
         @assert input.args[1].head == :(:) "First argument needs ':' following"
         types = ASCIIString[]
-        pkg, typ = _pkgtype_import(input.args[1])
+        pkg, m_or_s, typ = _pkgtype_import(input.args[1])
         push!(types, typ)
         for t in input.args[2:end]
             @assert isa(t, Symbol) "Type name ($(string(t))) not a symbol"
             push!(types, string(t))
         end
-        return :(_usepkg($pkg, $types...))
+        return :(_usepkg($pkg, $m_or_s, $types...))
     else
-        pkg, typ = _pkgtype_import(input)
-        return :(_usepkg($pkg, $typ))
+        pkg, m_or_s, typ = _pkgtype_import(input)
+        return :(_usepkg($pkg, $m_or_s, $typ))
     end
 end
 
@@ -101,7 +100,8 @@ function _pkgtype_import(input::Expr)
     @assert isa(p, Symbol) "Package name ($(string(p))) not a symbol"
     m_or_s = input.args[1].args[2].args[1]
     @assert m_or_s in (:msg,:srv) "Improper @rosimport input"
-    ps = string(input.args[1])
+    ps = string(p)
+    mss = string(m_or_s)
     ts = ""
     if isa(input.args[2], Symbol)
         ts = string(input.args[2])
@@ -110,20 +110,17 @@ function _pkgtype_import(input::Expr)
         @assert isa(tsym, Symbol) "Type name ($(string(tsym))) not a symbol"
         ts = string(tsym)
     end
-    return ps,ts
+    return ps,mss,ts
 end
 #Import a set of types from a single package
-function _usepkg(package::String, names::String...)
-    pkg, m_or_s = split(package,'.')
+function _usepkg(package::String, m_or_s::String, names::String...)
+    if ! haskey(_rospy_imports, package)
+        _rospy_imports[package] = ROSPackage(package)
+    end
+    rospypkg = _rospy_imports[package]
+    rosmod = (m_or_s == "msg" ? rospypkg.msg : rospypkg.srv)
     for n in names
-        if m_or_s == "srv"
-            importtype(string(pkg,".srv","/",n,"Request"),  _ros_typ_deps)
-            importtype(string(pkg,".srv","/",n,"Response"), _ros_typ_deps)
-        elseif m_or_s == "msg"
-            importtype(string(pkg,".msg","/",n), _ros_typ_deps)
-        else
-            error("Subpackage '$m_or_s' must be 'msg' or 'srv'")
-        end
+        importtype(rosmod, n)
     end
 end
 
@@ -159,7 +156,7 @@ function importtype(typestr::String, typ_deps::Dict)
         _rospy_imports[package] = ROSPackage(package)
     end
     rospkg = _rospy_imports[package]
-    rosmod = 
+    rosmod =
         if modtype == "msg"
             rospkg.msg
         elseif modtype == "srv"
@@ -172,8 +169,8 @@ function importtype(typestr::String, typ_deps::Dict)
         package, m_or_s, name = _splittypestr(typestr)
 
         #Store a reference to the message class definition
-        _rospy_classes[typestr] = 
-            try pypkg_mod.pymember(name) 
+        _rospy_classes[typestr] =
+            try pypkg_mod.pymember(name)
             catch ex
                 if isa(ex, KeyError)
                     error("$name not found in package: $package")
@@ -199,10 +196,51 @@ function importtype(typestr::String, typ_deps::Dict)
     end
 end
 
+function importtype!(pkgs::Dict, typ::String)
+    @debug("Import call for: ", mod.name, ".msg.", typ)
+    if ! haskey(mod.objs, typ)
+        pypkg_mod = import_rospy_pkg(mod.name, true)
+        #Store a reference to the message class definition
+        pyobj =
+            try pypkg_mod.pymember(typ)
+            catch ex
+                if isa(ex, KeyError)
+                    error("$typ not found in package: $package")
+                else
+                    rethrow(ex)
+                end
+            end
+        deptypes = pyobj[:_slot_types]
+        for tdep in deptypes
+            if ! (tdep in keys(_ros_builtin_types))
+                #Dependencies will always be messages only
+                tdepstrs = _splittypestr(tdep)
+                #Don't want to include the brackets in the string if present
+                tp = _check_array_type(tdepstrs[2])[1]
+                #pushing to a set does not create duplicates
+                push!(typ_deps[typestr], tp)
+
+                importtype(tp, typ_deps)
+            end
+        end
+    end
+end
+
+function typedeps!(mod::ROSModule, deps, rospy_pkgs)
+    for d in deps
+    end
+end
+
 function generate(pkg::ROSPackage)
     msgcode = modulecode(pkg.msg)
     srvcode = modulecode(pkg.srv)
 
+    pkgcode = quote
+        module $(pkg.name)
+        end
+    end
+    eval(Main, pkgcode)
+    pkgmod = eval(Main, symbol(pkg.name))
     msgmod = quote
         module msg
             $(msgcode...)
@@ -213,13 +251,8 @@ function generate(pkg::ROSPackage)
             $(srvcode...)
         end
     end
-    pkgcode = quote
-        module $(pkg.name)
-            $msgmod
-            $srvmod
-        end
-    end
-    eval(Main, pkgcode)
+    eval(pkgmod, msgmod)
+    eval(pkgmod, srvmod)
 end
 
 function modulecode(mod::ROSModule)
@@ -227,7 +260,7 @@ function modulecode(mod::ROSModule)
     modexprs = Expr[]
 
     #Import/exports so the generated code can use external names
-    push!(modexprs, 
+    push!(modexprs,
         quote
             import Base.convert
             import PyCall
@@ -239,28 +272,32 @@ function modulecode(mod::ROSModule)
             import RobotOS._typerepr
         end
     )
-    push!(modexprs, Expr(:import, :RobotOS, pymod))
+    #push!(modexprs, Expr(:import, :RobotOS, pymod))
     #Dependencies are always msg modules only
-    for m in pkg.deps
-        push!(modexprs, Expr(:using, symbol(m), :msg))
+    for m in mod.deps
+        msym = m.ismsg ? (:msg) : (:srv)
+        push!(modexprs, Expr(:using, symbol(m.mod), msym))
     end
+
+    types = keys(mod.objs)
     exports = Expr(:export)
     for typ in types
-        push!(exports.args, symbol(_splittypestr(typ)[3]))
+        push!(exports.args, symbol(typ))
     end
     push!(modexprs, exports)
 
     #Type creation
     for typ in types
-        memnames = _rospy_classes[typ]["__slots__"]
-        memtypes = _rospy_classes[typ]["_slot_types"]
+        memnames = mod.objs[typ]["__slots__"]
+        memtypes = mod.objs[typ]["_slot_types"]
         members = [zip(memnames, memtypes)...]
-        typeexprs = buildtype(typ, members)
+        typeexprs = buildtype(mod.name, typ, members)
 
-        for ex in typeexprs 
+        for ex in typeexprs
             push!(modexprs, ex)
         end
     end
+    modexprs
 end
 
 #Create the new module and build the new types inside
@@ -271,7 +308,7 @@ function buildmodule(modname::String, deps::Set, types::Vector)
     #Import/exports so the generated code can use external names
     pkg, m_or_s = split(modname, '.')
     pymod = symbol(string("py_",modname,"_",m_or_s))
-    push!(modexprs, 
+    push!(modexprs,
         quote
             import Base.convert
             using  PyCall
@@ -301,7 +338,7 @@ function buildmodule(modname::String, deps::Set, types::Vector)
         members = [zip(memnames, memtypes)...]
         typeexprs = buildtype(typ, members)
 
-        for ex in typeexprs 
+        for ex in typeexprs
             push!(modexprs, ex)
         end
     end
@@ -323,22 +360,23 @@ end
 #  - type/member declarations
 #  - convert to/from PyObject
 #  - default constructor
-function buildtype(typename::String, members::Vector)
-    pkg, m_or_s, name = _splittypestr(typename)
-    pymod = symbol(string("py_",pkg))
-    nsym = symbol(name)
-    @debug("Type: $name")
+function buildtype(modinfo::ModName, typename::String, members::Vector)
+    pkg = modinfo.mod
+    m_or_s = modinfo.ismsg ? (:msg) : (:srv)
+    parentsym = modinfo.ismsg ? (:MsgT) : (:SrvT)
+    nsym = symbol(typename)
+    @debug("Type: ", typename)
 
-    exprs = Array(Expr, 4)
+    exprs = Expr[]
     #Type declaration
-    exprs[1] = :(
-        type $nsym <: MsgT
+    push!(exprs, :(
+        type $nsym <: $parentsym
             #Generated code here
         end
-    )
+    ))
     #Convert from PyObject
-    exprs[2] = :(
-        convert(jlt::Type{$nsym}, o::PyObject) = begin
+    push!(exprs, :(
+        function convert(jlt::Type{$nsym}, o::PyObject)
             if o[:_type] != _typerepr(jlt)
                 throw(InexactError())
             end
@@ -346,25 +384,29 @@ function buildtype(typename::String, members::Vector)
             #Generated code here
             jl
         end
-    )
+    ))
     #Convert to PyObject
-    exprs[3] = :(
-        convert(::Type{PyObject}, o::$nsym) = begin
-            py = ($pymod.$nsym)()
+    push!(exprs, :(
+        function convert(::Type{PyObject}, o::$nsym)
+            py = (RobotOS._rospy_imports[$pkg].$m_or_s).objs[$typename]()
             #Generated code here
             py
         end
-    )
+    ))
     #Default constructor, but only if the type has members
-    exprs[4] = if length(members) > 0
-        :($nsym() = $nsym()) #Generated code inside previous parens
-    else
-        :()
+    defconstr = :(
+        function $nsym()
+            $nsym() #Generated code inside parens here
+        end
+    )
+    if length(members) > 0
+        push!(exprs, defconstr)
     end
-    typeargs  = exprs[1].args[3].args
-    jlconargs = exprs[2].args[2].args
-    pyconargs = exprs[3].args[2].args
-    consargs  = length(members) > 0 ? exprs[4].args[2].args : nothing
+
+    typeargs  =  exprs[1].args[3].args
+    jlconargs =  exprs[2].args[2].args
+    pyconargs =  exprs[3].args[2].args
+    consargs  = defconstr.args[2].args[2].args
 
     #Now add the meat to the empty expressions above
     for (namestr,typ) in members
@@ -376,7 +418,7 @@ function buildtype(typename::String, members::Vector)
 
         typ, arraylen = _check_array_type(typ)
         if _isrostype(typ)
-            j_typ = symbol(_splittypestr(typ)[3])
+            j_typ = symbol(_splittypestr(typ)[2])
             j_def = Expr(:call, j_typ)
         else
             if ! haskey(_ros_builtin_types, typ)
@@ -417,7 +459,7 @@ function buildtype(typename::String, members::Vector)
     end
     push!(exprs, :(_typerepr(::Type{$nsym}) = $typename))
     return exprs
-end 
+end
 
 #Produce an order of the keys of d that respect their dependencies
 function _order(d::Dict)
@@ -461,22 +503,21 @@ end
 function _splittypestr(typestr::String)
     if ! _isrostype(typestr)
         error(string("Invalid message type '$typestr', ",
-                     "use 'package_name.[msg|srv]/type_name'"))
+                     "use 'package_name/type_name'"))
     end
     rospkg, typ = split(typestr, '/')
-    pkg, m_or_s = split(rospkg, '.')
-    pkg, m_or_s, typ
+    rospkg, typ
 end
-#Valid ROS type string is all word chars split by a single forward slash and
-#either '.msg' or '.srv', with optional square brackets for array types
-_isrostype(s::String) = ismatch(r"^\w+\.(msg|srv)/\w+(?:\[\d*\])?$", s)
+#Valid ROS type string is all word chars split by a single forward slash, with
+#optional square brackets for array types
+_isrostype(s::String) = ismatch(r"^\w+/\w+(?:\[\d*\])?$", s)
 
 #Sanitize a string by checking for and removing brackets if they are present
 #Return the sanitized type and the number inside the brackets if it is a fixed
 #size type. Returns 0 if variable size (no number), -1 if no brackets
 function _check_array_type(typ::String)
     arraylen = -1
-    m = match(r"^([\w/.]+)\[(\d*)\]$", typ)
+    m = match(r"^([\w/]+)\[(\d*)\]$", typ)
     if m != nothing
         btype = m.captures[1]
         if isempty(m.captures[2])
