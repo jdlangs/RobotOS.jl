@@ -1,7 +1,7 @@
 #Generate Julia composite types for ROS messages
 using Compat
 
-function import_rospy_pkg(package::String, msgmod::Bool)
+function import_rospy_pkg(package::String)
     mssym = msgmod ? :msg : :srv
     pypkg = symbol(string("py_",package,"_",mssym))
     pkgsym = symbol(package)
@@ -14,31 +14,43 @@ function import_rospy_pkg(package::String, msgmod::Bool)
     end
 end
 
-immutable ModName
-    mod::ASCIIString
-    ismsg::Bool
+abstract ROSModule
+type ROSMsgModule <: ROSModule
+    name::ASCIIString
+    members::Vector{ASCIIString}
+    pyobjs::Dict{ASCIIString,PyObject}
+    deps::Set{ROSModule}
+    function ROSMsgModule(mname::String)
+        new(mname, 
+            ASCIIString[], 
+            Dict{ASCIIString,PyObject}(), 
+            Set{ROSModule}()
+        )
+    end
 end
-type ROSModule
-    name::ModName
-    objs::Dict{ASCIIString, PyObject}
-    deps::Set{ModName}
-    function ROSModule(name::String, ismsg::Bool)
-        new(ModName(name, ismsg), Dict{ASCIIString, PyObject}(), Set{ModName}())
+type ROSSrvModule <: ROSModule
+    name::ASCIIString
+    members::Vector{ASCIIString}
+    pyobjs::Dict{ASCIIString,Vector{PyObject}}
+    deps::Set{ROSModule}
+    function ROSSrvModule(mname::String)
+        new(mname, 
+            ASCIIString[], 
+            Dict{ASCIIString,Vector{PyObject}}(), 
+            Set{ROSModule}()
+        )
     end
 end
 type ROSPackage
     name::ASCIIString
-    msg::ROSModule
-    srv::ROSModule
+    msg::ROSMsgModule
+    srv::ROSSrvModule
     function ROSPackage(pkgname::String)
         new(pkgname, ROSModule(pkgname, true), ROSModule(pkgname, false))
     end
 end
 
-const _rospy_imports = Dict{ASCIIString, ROSPackage}()
-
-const _rospy_classes = Dict{ASCIIString, PyObject}()
-const _ros_typ_deps = Dict{ASCIIString, Set{ASCIIString}}()
+const _rospy_imports = Dict{ASCIIString,ROSPackage}()
 const _ros_builtin_types = @compat Dict{ASCIIString, Symbol}(
     "bool"    => :Bool,
     "int8"    => :Int8,
@@ -77,23 +89,23 @@ macro rosimport(input)
         @assert isa(input.args[1], Expr) "Improper @rosimport input"
         @assert input.args[1].head == :(:) "First argument needs ':' following"
         types = ASCIIString[]
-        pkg, m_or_s, typ = _pkgtype_import(input.args[1])
+        pkg, ismsg, typ = _pkgtype_import(input.args[1])
         push!(types, typ)
         for t in input.args[2:end]
             @assert isa(t, Symbol) "Type name ($(string(t))) not a symbol"
             push!(types, string(t))
         end
-        return :(_usepkg($pkg, $m_or_s, $types...))
+        return :(_usepkg($pkg, $ismsg, $types...))
     else
-        pkg, m_or_s, typ = _pkgtype_import(input)
-        return :(_usepkg($pkg, $m_or_s, $typ))
+        pkg, ismsg, typ = _pkgtype_import(input)
+        return :(_usepkg($pkg, $ismsg, $typ))
     end
 end
 
 #Return the pkg and types strings for a single expression of form:
 #  pkg.[msg|srv].type or pkg.[msg|srv]:type
 function _pkgtype_import(input::Expr)
-    @assert input.head in (:(.), :(:))
+    @assert input.head in (:(.), :(:)) "Improper @rosimport input"
     @assert isa(input.args[1], Expr) "Improper @rosimport input"
     @assert input.args[1].head == :(.) "Improper @rosimport input"
     p = input.args[1].args[1]
@@ -101,7 +113,7 @@ function _pkgtype_import(input::Expr)
     m_or_s = input.args[1].args[2].args[1]
     @assert m_or_s in (:msg,:srv) "Improper @rosimport input"
     ps = string(p)
-    mss = string(m_or_s)
+    msb = m_or_s == :msg
     ts = ""
     if isa(input.args[2], Symbol)
         ts = string(input.args[2])
@@ -110,17 +122,16 @@ function _pkgtype_import(input::Expr)
         @assert isa(tsym, Symbol) "Type name ($(string(tsym))) not a symbol"
         ts = string(tsym)
     end
-    return ps,mss,ts
+    return ps,msb,ts
 end
 #Import a set of types from a single package
-function _usepkg(package::String, m_or_s::String, names::String...)
+function _usepkg(package::String, ismsg::Bool, names::String...)
     if ! haskey(_rospy_imports, package)
         _rospy_imports[package] = ROSPackage(package)
     end
     rospypkg = _rospy_imports[package]
-    rosmod = (m_or_s == "msg" ? rospypkg.msg : rospypkg.srv)
     for n in names
-        importtype(rosmod, n)
+        importtype(ismsg ? rospypkg.msg : rospypkg.srv, n)
     end
 end
 
@@ -192,6 +203,73 @@ function importtype(typestr::String, typ_deps::Dict)
 
                 importtype(tp, typ_deps)
             end
+        end
+    end
+end
+
+function importtype!(mod::ROSSrvModule, typ::String)
+    @debug("Import call for: ", mod.name, ".srv.", typ)
+    if ! (typ in mod.members)
+        pymod, pyobj = _py_vars(mod.name, false, typ)
+
+        #Immediately import dependencies from the Request/Response classes
+        #Repeats are OK
+        req_obj = pypkg_mod.pymember(string(typ,"Request"))
+        resp_obj = pypkg_mod.pymember(string(typ,"Request"))
+        deptypes = [req_obj[:_slot_types]; resp_obj[:_slot_types]]
+        importdeps!(mod, deptypes)
+
+        push!(mod.members, typ)
+        push!(mod.pyobjs, PyObject[pyobj, req_obj, resp_obj])
+    end
+end
+function importtype!(mod::ROSMsgModule, typ::String)
+    @debug("Import call for: ", mod.name, ".msg.", typ)
+    if ! (typ in mod.members)
+        pymod, pyobj = _py_vars(mod.name, true, typ)
+
+        deptypes = pyobj[:_slot_types]
+        importdeps!(mod, deptypes)
+
+        push!(mod.members, typ)
+        push!(mod.pyobjs, PyObject[pyobj, req_obj, resp_obj])
+    end
+end
+
+function _py_vars(modname::String, typ::String)
+    pymod = import_rospy_pkg(modname)
+    pyobj =
+        try pymod.pymember(typ)
+        catch ex
+            if isa(ex, KeyError)
+                error("$typ not found in package: $modname")
+            else
+                rethrow(ex)
+            end
+        end
+    pymod, pyobj
+end
+
+function importdeps!(mod::ROSModule, deps::Vector)
+    for d in deps
+        if ! (d in keys(_ros_builtin_types))
+            pkgname, typename = _splittypestr(d)
+
+            #Create a new ROSPackage if needed
+            if ! haskey(_rospy_imports, pkgname)
+                _rospy_imports[pkgname] = ROSPackage(pkgname)
+            end
+
+            #Dependencies will always be messages only
+            depmod = _rospy_imports[pkgname].msg
+            if depmod.name != mod.name
+                #pushing to a set does not create duplicates
+                push!(mod.deps, depmod)
+            end
+
+            #Don't want to include the brackets in the string if present
+            typeclean = _check_array_type(tdepstrs[2])[1]
+            importtype!(depmod, typeclean)
         end
     end
 end
