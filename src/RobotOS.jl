@@ -1,18 +1,11 @@
 module RobotOS
 
 export @rosimport, gentypes, cleartypes,
-       Time, Duration, Rate, to_sec, to_nsec, now, get_rostime, sleep,
+       Time, Duration, Rate, to_sec, to_nsec, get_rostime,
        Publisher, Subscriber, publish,
        init_node, is_shutdown, spin,
        get_param, has_param, set_param, delete_param,
        logdebug, loginfo, logwarn, logerr, logfatal
-
-#Interior code can use this macro for debugging output
-macro debug(expr, other...)
-    :(if _debug_output println($expr,$(other...)) end)
-end
-_debug_output = false
-debug(d::Bool) = global _debug_output = d
 
 using PyCall
 const __rospy__ = try
@@ -27,6 +20,7 @@ end
 py_sys = pyimport("sys")
 py_sys["argv"] = ARGS
 
+include("debug.jl")
 include("time.jl")
 include("gentypes.jl")
 include("rospy.jl")
