@@ -9,7 +9,7 @@ type ROSMsgModule <: ROSModule
     deps::Set{ASCIIString}
     function ROSMsgModule(mname::String)
         new(mname, 
-            ASCIIString[], 
+            ASCIIString[],
             Dict{ASCIIString,PyObject}(), 
             Set{ASCIIString}()
         )
@@ -22,7 +22,7 @@ type ROSSrvModule <: ROSModule
     deps::Set{ASCIIString}
     function ROSSrvModule(mname::String)
         new(mname, 
-            ASCIIString[], 
+            ASCIIString[],
             Dict{ASCIIString,Vector{PyObject}}(), 
             Set{ASCIIString}()
         )
@@ -141,11 +141,23 @@ function cleartypes()
     nothing
 end
 
+function addtype!(mod::ROSMsgModule, typ::String)
+    if ! (typ in mod.members)
+        @debug("Message type import: ", _modname(mod), ".", typ)
+        pymod, pyobj = _pyvars(_modname(mod), typ)
+
+        deptypes = pyobj[:_slot_types]
+        _importdeps!(mod, deptypes)
+
+        push!(mod.members, typ)
+        mod.pyobjs[typ] = pyobj
+    end
+end
+
 function addtype!(mod::ROSSrvModule, typ::String)
     if ! (typ in mod.members)
-        fullmodname = string(mod.name, ".srv")
-        @debug("Service type import: ", fullmodname, ".", typ)
-        pymod, pyobj = _pyvars(fullmodname, typ)
+        @debug("Service type import: ", _modname(mod), ".", typ)
+        pymod, pyobj = _pyvars(_modname(mod), typ)
 
         if ! haskey(pyobj, "_request_class")
             error(string("Incorrect service name: ", typ))
@@ -160,20 +172,6 @@ function addtype!(mod::ROSSrvModule, typ::String)
 
         push!(mod.members, typ)
         mod.pyobjs[typ] = PyObject[pyobj, req_obj, resp_obj]
-    end
-end
-
-function addtype!(mod::ROSMsgModule, typ::String)
-    if ! (typ in mod.members)
-        fullmodname = string(mod.name, ".msg")
-        @debug("Message type import: ", fullmodname, ".", typ)
-        pymod, pyobj = _pyvars(fullmodname, typ)
-
-        deptypes = pyobj[:_slot_types]
-        _importdeps!(mod, deptypes)
-
-        push!(mod.members, typ)
-        mod.pyobjs[typ] = pyobj
     end
 end
 
@@ -246,41 +244,44 @@ end
 
 function buildpackage(pkg::ROSPackage)
     @debug("Building package: ", pkg.name)
-end
 
-function generate(pkg::ROSPackage)
-    msgcode = modulecode(pkg.msg)
-    srvcode = modulecode(pkg.srv)
+    #Create the top-level module for the package in Main
+    pkgsym = symbol(pkg.name)
+    pkgcode = Expr(:toplevel, :(module $pkgsym end))
+    Main.eval(pkgcode)
+    pkgmod = Main.eval(pkgsym)
 
-    pkgcode = quote
-        module $(pkg.name)
+    #Add msg and srv submodules if needed
+    @debug_addindent
+    if length(pkg.msg.members) > 0
+        msgcode = modulecode(pkg.msg)
+        msgmod = :(module msg end)
+        for expr in msgcode
+            println(expr)
+            push!(msgmod.args[3].args, expr)
         end
+        eval(pkgmod, msgmod)
     end
-    eval(Main, pkgcode)
-    pkgmod = eval(Main, symbol(pkg.name))
-    msgmod = quote
-        module msg
-            $(msgcode...)
+    if length(pkg.srv.members) > 0
+        srvcode = modulecode(pkg.srv)
+        srvmod = :(module srv end)
+        for expr in srvcode
+            push!(srvmod.args[3].args, expr)
         end
+        eval(pkgmod, srvmod)
     end
-    srvmod = quote
-        module srv
-            $(srvcode...)
-        end
-    end
-    eval(pkgmod, msgmod)
-    eval(pkgmod, srvmod)
+    @debug_subindent
 end
 
 function modulecode(mod::ROSModule)
-    #Module interior code expressions
-    modexprs = Expr[]
+    @debug("submodule: ", _modname(mod))
+    modcode = Expr[]
 
-    #Import/exports so the generated code can use external names
-    push!(modexprs,
+    #Generic imports
+    push!(modcode,
         quote
+            using PyCall
             import Base.convert
-            import PyCall
             import RobotOS
             import RobotOS.MsgT
             import RobotOS.Time
@@ -289,193 +290,199 @@ function modulecode(mod::ROSModule)
             import RobotOS._typerepr
         end
     )
-    #push!(modexprs, Expr(:import, :RobotOS, pymod))
-    #Dependencies are always msg modules only
+    #Import the dependant message modules
     for m in mod.deps
-        msym = m.ismsg ? (:msg) : (:srv)
-        push!(modexprs, Expr(:using, symbol(m.mod), msym))
+        push!(modcode, Expr(:using, symbol(m), :msg))
     end
+    exprs
 
-    types = keys(mod.objs)
-    exports = Expr(:export)
-    for typ in types
-        push!(exports.args, symbol(typ))
+    #The exported names
+    push!(modcode, _exportexpr(mod))
+
+    #The actual type definition
+    @debug_addindent
+    for typ in mod.members
+        typecode = buildtype(mod, typ)
+        append!(modcode, typecode)
     end
-    push!(modexprs, exports)
-
-    #Type creation
-    for typ in types
-        memnames = mod.objs[typ]["__slots__"]
-        memtypes = mod.objs[typ]["_slot_types"]
-        members = [zip(memnames, memtypes)...]
-        typeexprs = buildtype(mod.name, typ, members)
-
-        for ex in typeexprs
-            push!(modexprs, ex)
-        end
-    end
-    modexprs
+    @debug_subindent
+    modcode
 end
 
-#Create the new module and build the new types inside
-function buildmodule(modname::String, deps::Set, types::Vector)
-    #Module interior code expressions
-    modexprs = Expr[]
-
-    #Import/exports so the generated code can use external names
-    pkg, m_or_s = split(modname, '.')
-    pymod = symbol(string("py_",modname,"_",m_or_s))
-    push!(modexprs,
-        quote
-            import Base.convert
-            using  PyCall
-            import RobotOS
-            using  RobotOS.MsgT
-            using  RobotOS.Time
-            using  RobotOS.Duration
-            using  RobotOS.typezero
-            import RobotOS._typerepr
-        end
-    )
-    push!(modexprs, Expr(:import, :RobotOS, pymod))
-    #Dependencies are always msg modules only
-    for m in deps
-        push!(modexprs, Expr(:using, symbol(m), :msg))
-    end
-    exports = Expr(:export)
-    for typ in types
-        push!(exports.args, symbol(_splittypestr(typ)[3]))
-    end
-    push!(modexprs, exports)
-
-    #Type creation
-    for typ in types
-        memnames = _rospy_classes[typ]["__slots__"]
-        memtypes = _rospy_classes[typ]["_slot_types"]
-        members = [zip(memnames, memtypes)...]
-        typeexprs = buildtype(typ, members)
-
-        for ex in typeexprs
-            push!(modexprs, ex)
-        end
-    end
-    #Create module
-    m_or_s_sym = symbol(m_or_s)
-    msgmod = :(module $m_or_s_sym end)
-    append!(msgmod.args[3].args, modexprs)
-
-    modsym = symbol(modname)
-    modexp = Expr(:toplevel, :(module ($modsym) end))
-    push!(modexp.args[1].args[3].args, msgmod)
-
-    eval(Main, modexp)
-    mod = eval(Main, modsym)
-    mod
+function _exportexpr(mod::ROSMsgModule)
+    exports = [symbol(m) for m in mod.members]
+    Expr(:export, exports...)
 end
 
-#Generate code for a native Julia message type
-#  - type/member declarations
-#  - convert to/from PyObject
-#  - default constructor
-function buildtype(modinfo, typename::String, members::Vector)
-    pkg = modinfo.mod
-    m_or_s = modinfo.ismsg ? (:msg) : (:srv)
-    parentsym = modinfo.ismsg ? (:MsgT) : (:SrvT)
-    nsym = symbol(typename)
-    @debug("Type: ", typename)
+function _exportexpr(mod::ROSSrvModule)
+    exportexpr = Expr(:export)
+    for typ in mod.members
+        push!(exports.args,
+            symbol(typ),
+            symbol(string(typ,"Request")),
+            symbol(string(typ,"Response"))
+        )
+    end
+    exportexpr
+end
+
+function buildtype(mod::ROSMsgModule, typename::String)
+    pyobj = mod.pyobjs[typename]
+    memnames = pyobj[:__slots__]
+    memtypes = pyobj[:_slot_types]
+    members = collect(zip(memnames, memtypes))
+
+    pyexpr = :(RobotOS._rospy_imports[$(mod.name)].msg.pyobjs[$typename])
+    typecode(string(mod.name,"/",typename), :MsgT, pyexpr, members)
+end
+
+function buildtype(mod::ROSSrvModule, typename::String)
+    baseexpr = :(type $typename <: SrvT end)
+
+    reqobj = mod.pyobjs[typename][2]
+    memnames = reqobj[:__slots__]
+    memtypes = reqobj[:_slot_types]
+    reqmems = collect(zip(memnames, memtypes))
+    pyreq  = :(RobotOS._rospy_imports[$(mod.name)].srv.pyobjs[$typename][2])
+    reqexprs  = typecode(
+        string(mod.name,"/",typename,"Request"), :SrvT, pyreq, reqmems)
+
+    respobj = mod.pyobjs[typename][3]
+    memnames = respobj[:__slots__]
+    memtypes = respobj[:_slot_types]
+    respmems = collect(zip(memnames, memtypes))
+    pyresp = :(RobotOS._rospy_imports[$(mod.name)].srv.pyobjs[$typename][3])
+    respexprs = typecode(
+        string(mod.name,"/",typename,"Response"), :SrvT, pyresp, respmems)
+
+    [baseexpr; reqexprs; respexprs]
+end
+
+#Create the core generated expressions for a native Julia message type that has
+#data fields and interchanges with a python counterpart: 
+# (1) the 'type ... end' block
+# (2) No param outer constructer
+# (3) convert(PyObject, ...)
+# (4) convert(..., o::PyObject)
+function typecode(rosname::String, super::Symbol, pyexpr::Expr, members::Vector)
+    pkg, tname = _splittypestr(rosname)
+    @debug("Type: ", tname)
+    tsym = symbol(tname)
 
     exprs = Expr[]
-    #Type declaration
+    #First the empty expressions
+    #(1) Type declaration
     push!(exprs, :(
-        type $nsym <: $parentsym
+        type $tsym <: $super
             #Generated code here
         end
     ))
-    #Convert from PyObject
-    push!(exprs, :(
-        function convert(jlt::Type{$nsym}, o::PyObject)
-            if o[:_type] != _typerepr(jlt)
-                throw(InexactError())
+    #(2) Default constructor, but only if the type has members
+    if length(members) > 0
+        push!(exprs, :(
+            function $tsym()
+                $tsym() #Generated code inside parens here
             end
-            jl = $nsym()
-            #Generated code here
-            jl
-        end
-    ))
-    #Convert to PyObject
+        ))
+    else
+        push!(exprs, :())
+    end
+    #(3) Convert to PyObject
     push!(exprs, :(
-        function convert(::Type{PyObject}, o::$nsym)
-            py = (RobotOS._rospy_imports[$pkg].$m_or_s).objs[$typename]()
+        function convert(::Type{PyObject}, o::$tsym)
+            py = pycall($pyexpr, PyObject)
             #Generated code here
             py
         end
     ))
-    #Default constructor, but only if the type has members
-    defconstr = :(
-        function $nsym()
-            $nsym() #Generated code inside parens here
+    #(4) Convert from PyObject
+    push!(exprs, :(
+        function convert(jlt::Type{$tsym}, o::PyObject)
+            if o[:_type] != _typerepr(jlt)
+                throw(InexactError())
+            end
+            jl = $tsym()
+            #Generated code here
+            jl
         end
-    )
-    if length(members) > 0
-        push!(exprs, defconstr)
-    end
-
-    typeargs  =  exprs[1].args[3].args
-    jlconargs =  exprs[2].args[2].args
-    pyconargs =  exprs[3].args[2].args
-    consargs  = defconstr.args[2].args[2].args
+    ))
 
     #Now add the meat to the empty expressions above
     for (namestr,typ) in members
-        @debug("\t$namestr :: $typ")
-        if typ == "char" || typ == "byte"
-            warn("Use of type '$typ' is deprecated in message definitions, ",
-            "use '$(lowercase(string(_ros_builtin_types[typ])))' instead.")
-        end
-
-        typ, arraylen = _check_array_type(typ)
-        if _isrostype(typ)
-            j_typ = symbol(_splittypestr(typ)[2])
-            j_def = Expr(:call, j_typ)
-        else
-            if ! haskey(_ros_builtin_types, typ)
-                error("Message generation; unknown type '$typ' in:\n$members")
-            end
-            j_typ = _ros_builtin_types[typ]
-            j_def = Expr(:call, :typezero, j_typ)
-        end
-
-        namesym = symbol(namestr)
-        if arraylen >= 0
-            memexpr = :($namesym::Array{$j_typ,1})
-            defexpr = Expr(:call, :fill, j_def, arraylen)
-            jlconexpr = :(jl.$namesym = convert(Array{$j_typ,1}, o[$namestr]))
-
-            #uint8[] is string in rospy and PyCall's conversion to bytearray is
-            #rejected by ROS
-            if j_typ == :Uint8
-                pyconexpr = :(py[$namestr] =
-                    pycall(pybuiltin("str"), PyObject, PyObject(o.$namesym))
-                )
-            elseif _isrostype(typ)
-                pyconexpr = :(py[$namestr] =
-                    convert(Array{PyObject,1}, o.$namesym))
-            else
-                pyconexpr = :(py[$namestr] = o.$namesym)
-            end
-        else
-            memexpr = :($namesym::$j_typ)
-            defexpr = j_def
-            jlconexpr = :(jl.$namesym = convert($j_typ, o[$namestr]))
-            pyconexpr = :(py[$namestr] = convert(PyObject, o.$namesym))
-        end
-        push!(typeargs, memexpr)
-        insert!(jlconargs, length(jlconargs), jlconexpr)
-        insert!(pyconargs, length(pyconargs), pyconexpr)
-        push!(consargs, defexpr)
+        @debug_addindent
+        _addtypemember!(exprs, namestr, typ)
+        @debug_subindent
     end
-    push!(exprs, :(_typerepr(::Type{$nsym}) = $typename))
-    return exprs
+    push!(exprs, :(_typerepr(::Type{$tsym}) = $rosname))
+    exprs
+end
+
+function _addtypemember!(exprs, namestr, typestr)
+    @debug("$namestr :: $typestr")
+    typeargs  = exprs[1].args[3].args
+    pyconargs = exprs[3].args[2].args
+    jlconargs = exprs[4].args[2].args
+    consargs  = length(exprs[2].args) >= 2 ? 
+        exprs[2].args[2].args[2].args : 
+        nothing
+
+    if typestr == "char" || typestr == "byte"
+        warn("Use of type '$typestr' is deprecated in message definitions, ",
+        "use '$(lowercase(string(_ros_builtin_types[typestr])))' instead.")
+    end
+
+    typestr, arraylen = _check_array_type(typestr)
+    if _isrostype(typestr)
+        j_typ = symbol(_splittypestr(typestr)[2])
+        j_def = Expr(:call, j_typ)
+    else
+        if ! haskey(_ros_builtin_types, typestr)
+            error("Message generation; unknown type '$typestr'")
+        end
+        j_typ = _ros_builtin_types[typestr]
+        j_def = Expr(:call, :typezero, j_typ)
+    end
+
+    namesym = symbol(namestr)
+    if arraylen >= 0
+        memexpr = :($namesym::Array{$j_typ,1})
+        defexpr = Expr(:call, :fill, j_def, arraylen)
+        jlconexpr = :(jl.$namesym = convert(Array{$j_typ,1}, o[$namestr]))
+
+        #uint8[] is string in rospy and PyCall's conversion to bytearray is
+        #rejected by ROS
+        if j_typ == :Uint8
+            pyconexpr = :(py[$namestr] =
+                pycall(pybuiltin("str"), PyObject, PyObject(o.$namesym))
+            )
+        elseif _isrostype(typ)
+            pyconexpr = :(py[$namestr] =
+                convert(Array{PyObject,1}, o.$namesym))
+        else
+            pyconexpr = :(py[$namestr] = o.$namesym)
+        end
+    else
+        memexpr = :($namesym::$j_typ)
+        defexpr = j_def
+        jlconexpr = :(jl.$namesym = convert($j_typ, o[$namestr]))
+        pyconexpr = :(py[$namestr] = convert(PyObject, o.$namesym))
+    end
+    push!(typeargs, memexpr)
+    insert!(jlconargs, length(jlconargs), jlconexpr)
+    insert!(pyconargs, length(pyconargs), pyconexpr)
+    push!(consargs, defexpr)
+end
+
+function _collectdeps(pkgs::Dict)
+    deps = Dict{ASCIIString, Set{ASCIIString}}()
+    for pname in keys(pkgs)
+        if ! haskey(deps, pname)
+            deps[pname] = Set{ASCIIString}()
+        end
+        union!(deps[pname], pkgs[pname].msg.deps)
+        union!(deps[pname], pkgs[pname].srv.deps)
+    end
+    deps
 end
 
 #Produce an order of the keys of d that respect their dependencies
@@ -496,25 +503,6 @@ function _order(d::Dict)
         trecurse!(tlist, d, t)
     end
     tlist
-end
-
-#Produce a dict of package dependencies from the dependencies of the
-#fully-qualified type strings
-function _typ_to_pkg_deps(typ_deps::Dict)
-    pkg_deps = Dict{ASCIIString, Set{ASCIIString}}()
-    for (typ, deps) in collect(typ_deps)
-        tpkg = _splittypestr(typ)[1]
-        if ! haskey(pkg_deps, tpkg)
-            pkg_deps[tpkg] = Set{ASCIIString}()
-        end
-        for d in deps
-            dpkg = _splittypestr(d)[1]
-            if dpkg != tpkg
-                push!(pkg_deps[tpkg], dpkg)
-            end
-        end
-    end
-    pkg_deps
 end
 
 function _splittypestr(typestr::String)
@@ -551,3 +539,6 @@ end
 #Default method to get the "pkg/type" string from a generated DataType.
 #Extended by the generated modules.
 _typerepr{T}(::Type{T}) = error("Not a ROS type")
+
+_modname(m::ROSMsgModule) = string(m.name, ".msg")
+_modname(m::ROSSrvModule) = string(m.name, ".srv")
