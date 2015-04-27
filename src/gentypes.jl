@@ -1,30 +1,17 @@
 #Generate Julia composite types for ROS messages
 using Compat
 
-function import_rospy_pkg(package::String)
-    mssym = msgmod ? :msg : :srv
-    pypkg = symbol(string("py_",package,"_",mssym))
-    pkgsym = symbol(package)
-    @debug("Request to import python package: ", package, ".", mssym)
-    try
-        @eval @pyimport $(pkgsym).$(mssym) as $pypkg
-    catch ex
-        show(ex)
-        error("python import error: $(ex.val[:args][1])")
-    end
-end
-
 abstract ROSModule
 type ROSMsgModule <: ROSModule
     name::ASCIIString
     members::Vector{ASCIIString}
     pyobjs::Dict{ASCIIString,PyObject}
-    deps::Set{ROSModule}
+    deps::Set{ASCIIString}
     function ROSMsgModule(mname::String)
         new(mname, 
             ASCIIString[], 
             Dict{ASCIIString,PyObject}(), 
-            Set{ROSModule}()
+            Set{ASCIIString}()
         )
     end
 end
@@ -32,12 +19,12 @@ type ROSSrvModule <: ROSModule
     name::ASCIIString
     members::Vector{ASCIIString}
     pyobjs::Dict{ASCIIString,Vector{PyObject}}
-    deps::Set{ROSModule}
+    deps::Set{ASCIIString}
     function ROSSrvModule(mname::String)
         new(mname, 
             ASCIIString[], 
             Dict{ASCIIString,Vector{PyObject}}(), 
-            Set{ROSModule}()
+            Set{ASCIIString}()
         )
     end
 end
@@ -46,7 +33,7 @@ type ROSPackage
     msg::ROSMsgModule
     srv::ROSSrvModule
     function ROSPackage(pkgname::String)
-        new(pkgname, ROSModule(pkgname, true), ROSModule(pkgname, false))
+        new(pkgname, ROSMsgModule(pkgname), ROSSrvModule(pkgname))
     end
 end
 
@@ -127,26 +114,22 @@ end
 #Import a set of types from a single package
 function _usepkg(package::String, ismsg::Bool, names::String...)
     if ! haskey(_rospy_imports, package)
+        @debug("Creating new package: ",package,".", ismsg ? "msg" : "srv") 
         _rospy_imports[package] = ROSPackage(package)
     end
     rospypkg = _rospy_imports[package]
     for n in names
-        importtype(ismsg ? rospypkg.msg : rospypkg.srv, n)
+        addtype!(ismsg ? rospypkg.msg : rospypkg.srv, n)
     end
 end
 
 #Do the Julia type generation. This function is needed because we want to
 #create the modules in one go, rather than anytime @rosimport gets called
 function gentypes()
-    pkg_deps = _typ_to_pkg_deps(_ros_typ_deps)
-    pkglist = _order(pkg_deps)
+    pkgdeps = _collectdeps(_rospy_imports)
+    pkglist = _order(pkgdeps)
     for pkg in pkglist
-        pkgtypes = filter(Regex("^$pkg/\\w+\$"), _ros_typ_deps)
-        mtypelist::Vector{ASCIIString} = _order(pkgtypes)
-
-        srvpkg = modulecode(string(pkg,".srv"), pkg_deps[pkg], mtypelist)
-        msgpkg = modulecode(string(pkg,".msg"), pkg_deps[pkg], mtypelist)
-        createmodule(pkg, msgpkg, srvpkg)
+        buildpackage(_rospy_imports[pkg])
     end
 end
 
@@ -154,90 +137,48 @@ end
 #already generated modules! They will be replaced when gentypes is called
 #again.
 function cleartypes()
-    empty!(_ros_typ_deps)
-    empty!(_rospy_classes)
+    empty!(_rospy_imports)
     nothing
 end
 
-#Recursively import all needed messages for a given message
-function importtype(typestr::String, typ_deps::Dict)
-    @debug("Importing call for: ", typestr)
-    package, modtype, typename = _splittypestr(typestr)
-    if ! haskey(_rospy_imports, package)
-        _rospy_imports[package] = ROSPackage(package)
-    end
-    rospkg = _rospy_imports[package]
-    rosmod =
-        if modtype == "msg"
-            rospkg.msg
-        elseif modtype == "srv"
-            rospkg.srv
-        else
-            error("Subpackage '$modtype' must be 'msg' or 'srv'")
-        end
-
-    if ! haskey(rosmod, typename)
-        package, m_or_s, name = _splittypestr(typestr)
-
-        #Store a reference to the message class definition
-        _rospy_classes[typestr] =
-            try pypkg_mod.pymember(name)
-            catch ex
-                if isa(ex, KeyError)
-                    error("$name not found in package: $package")
-                else
-                    rethrow(ex)
-                end
-            end
-        typ_deps[typestr] = Set{ASCIIString}()
-        deptypes = _rospy_classes[typestr][:_slot_types]
-        for tdep in deptypes
-            if ! (tdep in keys(_ros_builtin_types))
-                #Dependencies will always be messages only
-                tdepstrs = split(tdep,'/')
-                tp = string(tdepstrs[1],".msg/",tdepstrs[2])
-                #Don't want to include the brackets in the string if present
-                tp = _check_array_type(tp)[1]
-                #pushing to a set does not create duplicates
-                push!(typ_deps[typestr], tp)
-
-                importtype(tp, typ_deps)
-            end
-        end
-    end
-end
-
-function importtype!(mod::ROSSrvModule, typ::String)
-    @debug("Import call for: ", mod.name, ".srv.", typ)
+function addtype!(mod::ROSSrvModule, typ::String)
     if ! (typ in mod.members)
-        pymod, pyobj = _py_vars(mod.name, false, typ)
+        fullmodname = string(mod.name, ".srv")
+        @debug("Service type import: ", fullmodname, ".", typ)
+        pymod, pyobj = _pyvars(fullmodname, typ)
+
+        if ! haskey(pyobj, "_request_class")
+            error(string("Incorrect service name: ", typ))
+        end
 
         #Immediately import dependencies from the Request/Response classes
         #Repeats are OK
-        req_obj = pypkg_mod.pymember(string(typ,"Request"))
-        resp_obj = pypkg_mod.pymember(string(typ,"Request"))
+        req_obj = pymod.pymember(string(typ,"Request"))
+        resp_obj = pymod.pymember(string(typ,"Response"))
         deptypes = [req_obj[:_slot_types]; resp_obj[:_slot_types]]
-        importdeps!(mod, deptypes)
+        _importdeps!(mod, deptypes)
 
         push!(mod.members, typ)
-        push!(mod.pyobjs, PyObject[pyobj, req_obj, resp_obj])
+        mod.pyobjs[typ] = PyObject[pyobj, req_obj, resp_obj]
     end
 end
-function importtype!(mod::ROSMsgModule, typ::String)
-    @debug("Import call for: ", mod.name, ".msg.", typ)
+
+function addtype!(mod::ROSMsgModule, typ::String)
     if ! (typ in mod.members)
-        pymod, pyobj = _py_vars(mod.name, true, typ)
+        fullmodname = string(mod.name, ".msg")
+        @debug("Message type import: ", fullmodname, ".", typ)
+        pymod, pyobj = _pyvars(fullmodname, typ)
 
         deptypes = pyobj[:_slot_types]
-        importdeps!(mod, deptypes)
+        _importdeps!(mod, deptypes)
 
         push!(mod.members, typ)
-        push!(mod.pyobjs, PyObject[pyobj, req_obj, resp_obj])
+        mod.pyobjs[typ] = pyobj
     end
 end
 
-function _py_vars(modname::String, typ::String)
-    pymod = import_rospy_pkg(modname)
+function _pyvars(modname::String, typ::String)
+    pymod = _import_rospy_pkg(modname)
     pyobj =
         try pymod.pymember(typ)
         catch ex
@@ -250,13 +191,16 @@ function _py_vars(modname::String, typ::String)
     pymod, pyobj
 end
 
-function importdeps!(mod::ROSModule, deps::Vector)
+function _importdeps!(mod::ROSModule, deps::Vector)
     for d in deps
         if ! (d in keys(_ros_builtin_types))
+            @debug("Dependency: ", d)
             pkgname, typename = _splittypestr(d)
 
+            @debug_addindent
             #Create a new ROSPackage if needed
             if ! haskey(_rospy_imports, pkgname)
+                @debug("Creating new package: ", pkgname)
                 _rospy_imports[pkgname] = ROSPackage(pkgname)
             end
 
@@ -264,49 +208,44 @@ function importdeps!(mod::ROSModule, deps::Vector)
             depmod = _rospy_imports[pkgname].msg
             if depmod.name != mod.name
                 #pushing to a set does not create duplicates
-                push!(mod.deps, depmod)
+                push!(mod.deps, depmod.name)
             end
 
             #Don't want to include the brackets in the string if present
-            typeclean = _check_array_type(tdepstrs[2])[1]
-            importtype!(depmod, typeclean)
+            typeclean = _check_array_type(typename)[1]
+            addtype!(depmod, typeclean)
+            @debug_subindent
         end
     end
 end
 
-function importtype!(pkgs::Dict, typ::String)
-    @debug("Import call for: ", mod.name, ".msg.", typ)
-    if ! haskey(mod.objs, typ)
-        pypkg_mod = import_rospy_pkg(mod.name, true)
-        #Store a reference to the message class definition
-        pyobj =
-            try pypkg_mod.pymember(typ)
-            catch ex
-                if isa(ex, KeyError)
-                    error("$typ not found in package: $package")
-                else
-                    rethrow(ex)
-                end
-            end
-        deptypes = pyobj[:_slot_types]
-        for tdep in deptypes
-            if ! (tdep in keys(_ros_builtin_types))
-                #Dependencies will always be messages only
-                tdepstrs = _splittypestr(tdep)
-                #Don't want to include the brackets in the string if present
-                tp = _check_array_type(tdepstrs[2])[1]
-                #pushing to a set does not create duplicates
-                push!(typ_deps[typestr], tp)
-
-                importtype(tp, typ_deps)
-            end
+function _import_rospy_pkg(package::String)
+    pkg, ptype = split(package, '.')
+    if ptype != "msg" && ptype != "srv" 
+        throw(ArgumentError("Improper import call for package: $package"))
+    end
+    pypkg = symbol(string("py_",pkg,"_",ptype))
+    newimport = try
+        eval(pypkg)
+        false
+    catch
+        true
+    end
+    if newimport
+        @debug("Importing python package: ", package)
+        pkgsym, mssym = symbol(pkg), symbol(ptype)
+        try
+            @eval @pyimport $(pkgsym).$(mssym) as $pypkg
+        catch ex
+            show(ex)
+            error("python import error: $(ex.val[:args][1])")
         end
     end
+    eval(pypkg)
 end
 
-function typedeps!(mod::ROSModule, deps, rospy_pkgs)
-    for d in deps
-    end
+function buildpackage(pkg::ROSPackage)
+    @debug("Building package: ", pkg.name)
 end
 
 function generate(pkg::ROSPackage)
@@ -438,7 +377,7 @@ end
 #  - type/member declarations
 #  - convert to/from PyObject
 #  - default constructor
-function buildtype(modinfo::ModName, typename::String, members::Vector)
+function buildtype(modinfo, typename::String, members::Vector)
     pkg = modinfo.mod
     m_or_s = modinfo.ismsg ? (:msg) : (:srv)
     parentsym = modinfo.ismsg ? (:MsgT) : (:SrvT)
