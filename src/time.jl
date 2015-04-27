@@ -32,7 +32,8 @@ Duration(t::FloatingPoint) =
 #Enforce 0 <= nsecs < 1e9
 function _canonical_time(secs::Integer, nsecs::Integer)
     nsec_conv = int32(1_000_000_000)
-    dsecs, rnsecs  = convert((Int32, Int32), divrem(nsecs, nsec_conv))
+    dsecs  = convert(Int32, div(nsecs, nsec_conv))
+    rnsecs = convert(Int32, rem(nsecs, nsec_conv))
     if rnsecs < 0
         dsecs = dsecs - one(Int32)
         rnsecs = rnsecs + nsec_conv
@@ -57,7 +58,7 @@ convert(::Type{PyObject}, t::Duration) = __rospy__.Duration(t.secs,t.nsecs)
 #Real number conversions
 to_sec{T<:TVal}(t::T) = float64(t.secs) + 1e-9*float64(t.nsecs)
 to_nsec{T<:TVal}(t::T) = 1_000_000_000*t.secs + t.nsecs
-convert{T<:TVal}(::Type{Float64}, t::T) = to_sec(t)
+#convert{T<:TVal}(::Type{Float64}, t::T) = to_sec(t)
 
 #Comparisons
 =={T<:TVal}(t1::T, t2::T)     = (t1.secs == t2.secs) && (t1.nsecs == t2.nsecs)
