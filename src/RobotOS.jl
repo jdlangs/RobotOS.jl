@@ -25,5 +25,6 @@ include("time.jl")
 include("gentypes.jl")
 include("rospy.jl")
 include("pubsub.jl")
+include("services.jl")
 
 end
