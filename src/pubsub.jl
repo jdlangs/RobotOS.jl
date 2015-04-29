@@ -41,9 +41,10 @@ Subscriber{MsgType<:MsgT}(
 ) = Subscriber{MsgType}(topic, cb, cb_args; kwargs...)
 
 function _get_rospy_class(typ::DataType)
+    global _rospy_objects
     rospycls =
         try
-            _rospy_classes[RobotOS._typerepr(typ)]
+            _rospy_objects[_typerepr(typ)]
         catch ex
             if isa(ex, KeyError)
                 error("Type ($typ) is not generated")
