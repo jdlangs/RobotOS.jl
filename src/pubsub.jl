@@ -39,18 +39,3 @@ Subscriber{MsgType<:MsgT}(
     cb_args = ();
     kwargs...
 ) = Subscriber{MsgType}(topic, cb, cb_args; kwargs...)
-
-function _get_rospy_class(typ::DataType)
-    global _rospy_objects
-    rospycls =
-        try
-            _rospy_objects[_typerepr(typ)]
-        catch ex
-            if isa(ex, KeyError)
-                error("Type ($typ) is not generated")
-            else
-                error("Type ($typ) is not a valid message type")
-            end
-        end
-    rospycls
-end
