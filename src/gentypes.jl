@@ -84,7 +84,7 @@ end
 
 #Do the Julia type generation. This function is needed because we want to
 #create the modules in one go, rather than anytime @rosimport gets called
-function gentypes()
+function rostypegen()
     global _ros_typ_deps
     pkg_deps = _typ_to_pkg_deps(_ros_typ_deps)
     pkglist = _order(pkg_deps)
@@ -94,17 +94,19 @@ function gentypes()
         buildmodule(pkg, pkg_deps[pkg], mtypelist)
     end
 end
+gentypes() = error("gentypes() renamed to rostypegen()")
 
 #Reset type generation process to start over with @rosimport. Does not remove
 #already generated modules! They will be replaced when gentypes is called
 #again.
-function cleartypes()
+function rostypereset()
     global _ros_typ_deps
     global _rospy_classes
     empty!(_ros_typ_deps)
     empty!(_rospy_classes)
     nothing
 end
+cleartypes() = error("cleartypes() renamed to rostypereset()")
 
 #Recursively import all needed messages for a given message
 function importtype(typestr::String, typ_deps::Dict)

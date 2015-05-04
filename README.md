@@ -41,11 +41,11 @@ its dependencies but the native Julia types are not created yet since any
 inter-module dependencies have to be resolved first. After the final
 `@rosimport` call, initiate the message generation with:
 
-    gentypes()
+    rostypegen()
 
 The new types will be placed in newly created modules in `Main`, corresponding
 to the packages requested. For example, `"std_msgs/Header" =>
-std_msgs.msg.Header`. After calling `gentypes()` they can be interacted with
+std_msgs.msg.Header`. After calling `rostypegen()` they can be interacted with
 just like regular modules with `import` and `using` statements bringing the
 generated type names into the local namespace.
 
@@ -54,10 +54,10 @@ generated type names into the local namespace.
     p = Path()
     v = Vector3(1.1,2.2,3.3)
 
-An additional function, `cleartypes()`, resets the type generation process,
+An additional function, `rostypereset()`, resets the type generation process,
 possibly useful for development in the REPL. When invoked, new `@rosimport`
 calls will be needed to generate the same or different types, and previously
-generated modules will be overwritten after `gentypes()` is called again.  Keep
+generated modules will be overwritten after `rostypegen()` is called again.  Keep
 in mind that names cannot be cleared once defined so if a module is not
 regenerated, the first version will remain.
 
@@ -162,7 +162,7 @@ republishes them as Points.
 
     using RobotOS
     @rosimport geometry_msgs.msg: Point, Pose2D
-    gentypes()
+    rostypegen()
     using geometry_msgs.msg
 
     callback(msg::Pose2D, pub_obj::Publisher{Point}) = begin
