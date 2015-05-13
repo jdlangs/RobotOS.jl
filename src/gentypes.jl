@@ -265,7 +265,7 @@ function buildpackage(pkg::ROSPackage)
 
     #Create the top-level module for the package in Main
     pkgsym = symbol(pkg.name)
-    pkgcode = Expr(:toplevel, :(module $pkgsym end))
+    pkgcode = Expr(:toplevel, :(module ($pkgsym) end))
     Main.eval(pkgcode)
     pkgmod = Main.eval(pkgsym)
 
