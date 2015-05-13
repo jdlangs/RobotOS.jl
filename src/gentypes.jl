@@ -1,6 +1,8 @@
 #Generate Julia composite types for ROS messages
 using Compat
 
+export @rosimport, rostypegen, rostypereset
+
 #Composite types for internal use. Keeps track of the imported types and helps
 #keep code generation orderly.
 abstract ROSModule
@@ -105,6 +107,7 @@ function _pkgtype_import(input::Expr)
     if isa(input.args[2], Symbol)
         ts = string(input.args[2])
     elseif isa(input.args[2], Expr)
+        @assert length(input.args[2].args) == 1 "Type name not a symbol"
         tsym = input.args[2].args[1]
         @assert isa(tsym, Symbol) "Type name ($(string(tsym))) not a symbol"
         ts = string(tsym)
@@ -126,7 +129,7 @@ end
 
 #Do the Julia type generation. This function is needed because we want to
 #create the modules in one go, rather than anytime @rosimport gets called
-function gentypes()
+function rostypegen()
     global _rospy_imports
     pkgdeps = _collectdeps(_rospy_imports)
     pkglist = _order(pkgdeps)
@@ -134,17 +137,19 @@ function gentypes()
         buildpackage(_rospy_imports[pkg])
     end
 end
+gentypes() = error("gentypes() renamed to rostypegen()")
 
 #Reset type generation process to start over with @rosimport. Does not remove
 #already generated modules! They will be replaced when gentypes is called
 #again.
-function cleartypes()
+function rostypereset()
     global _rospy_imports
     global _rospy_objects
     empty!(_rospy_imports)
     empty!(_rospy_objects)
     nothing
 end
+cleartypes() = error("cleartypes() renamed to rostypereset()")
 
 #Populate the module with a new message type. Import and add dependencies first
 #so they will appear first in the generated code.

@@ -1,4 +1,5 @@
 #API for publishing and subscribing to message topics
+export Publisher, Subscriber, publish
 
 type Publisher{MsgType<:MsgT}
     o::PyObject
