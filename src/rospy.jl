@@ -1,3 +1,8 @@
+#Wrappers for functions directly in the rospy namespace
+export init_node, is_shutdown, spin,
+       get_param, has_param, set_param, delete_param,
+       logdebug, loginfo, logwarn, logerr, logfatal
+
 #General rospy functions
 init_node(name::String; args...) = __rospy__.init_node(name; args...)
 spin()                 = __rospy__.spin()

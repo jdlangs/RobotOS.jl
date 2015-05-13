@@ -1,6 +1,8 @@
 #Generate Julia composite types for ROS messages
 using Compat
 
+export @rosimport, rostypegen, rostypereset, gentypes, cleartypes
+
 global const _rospy_classes = Dict{ASCIIString, PyObject}()
 global const _ros_typ_deps = Dict{ASCIIString, Set{ASCIIString}}()
 global const _ros_builtin_types = @compat Dict{ASCIIString, Symbol}(

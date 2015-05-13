@@ -1,4 +1,5 @@
 #API for publishing and subscribing to message topics
+export Publisher, Subscriber, publish
 
 type Publisher{MsgType<:MsgT}
     o::PyObject
@@ -21,7 +22,7 @@ type Subscriber{MsgType<:MsgT}
     callback::Function
 
     function Subscriber(
-        topic::String, cb::Function, cb_args::(Any...,) = (); kwargs...
+        topic::String, cb::Function, cb_args = (); kwargs...
     )
         @debug("Creating <$(string(MsgType))> subscriber on topic: '$topic'")
         rospycls = _get_rospy_class(MsgType)
@@ -36,7 +37,7 @@ Subscriber{MsgType<:MsgT}(
     topic::String,
     ::Type{MsgType},
     cb::Function,
-    cb_args::(Any...,) = ();
+    cb_args = ();
     kwargs...
 ) = Subscriber{MsgType}(topic, cb, cb_args; kwargs...)
 
