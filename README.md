@@ -7,9 +7,10 @@
 ### Description
 
 This package enables interfacing Julia code with a ROS ([Robot Operating
-System](http://wiki.ros.org)) system. It works by generating native Julia types for
-ROS messages, the same as in C++ or Python, and then wrapping rospy through the
-PyCall package to get communication through topics and parameters.
+System](http://wiki.ros.org)) system. It works by generating native Julia types
+for ROS types, the same as in C++ or Python, and then wrapping rospy through
+the PyCall package to get communication through topics, services, and
+parameters.
 
 ### Installation
 
@@ -39,7 +40,7 @@ seen in these examples:
 `@rosimport` will import the python modules for the requested type and all
 its dependencies but the native Julia types are not created yet since any
 inter-module dependencies have to be resolved first. After the final
-`@rosimport` call, initiate the message generation with:
+`@rosimport` call, initiate the type generation with:
 
     gentypes()
 
@@ -132,12 +133,12 @@ generation. For the `@rosimport` call, use the plain service type name. After
 `gentypes()`, the generated `.srv` submodule will contain 3 types: the plain
 type, a request type, and a response type. For example `GetPlan`,
 `GetPlanRequest`, and `GetPlanResponse`. To provide the service to other nodes,
-you would create a `Service{GetPlan}` object. To call it,
-`ServiceProxy{GetPlan}`. The syntax exactly matches rospy to construct and use
-these objects. The only exception is in Julia v0.3, where the `call` is not
-overloaded for objects. In that case, you must call the `ServiceProxy` via
-`call(myproxy, myreq)` instead of the rospy method of `myproxy(myreq)` which
-works in later versions of Julia.
+you would create a `Service{GetPlan}` object. To call it, a
+`ServiceProxy{GetPlan}` object. The syntax exactly matches rospy to construct
+and use these objects. The only exception is in Julia v0.3, where the `call`
+method is not overloaded for objects. In that case, you must call the
+`ServiceProxy` via `call(myproxy, myreq)` instead of the rospy method of
+`myproxy(myreq)` which works in later versions of Julia.
 
 ### Parameter Server
 
