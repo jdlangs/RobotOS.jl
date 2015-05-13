@@ -1,7 +1,7 @@
 #Generate Julia composite types for ROS messages
 using Compat
 
-export @rosimport, rostypegen, rostypereset
+export @rosimport, rostypegen, rostypereset, gentypes, cleartypes
 
 #Composite types for internal use. Keeps track of the imported types and helps
 #keep code generation orderly.
@@ -140,7 +140,7 @@ end
 gentypes() = error("gentypes() renamed to rostypegen()")
 
 #Reset type generation process to start over with @rosimport. Does not remove
-#already generated modules! They will be replaced when gentypes is called
+#already generated modules! They will be replaced when rostypegen is called
 #again.
 function rostypereset()
     global _rospy_imports

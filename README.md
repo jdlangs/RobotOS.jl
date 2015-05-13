@@ -130,7 +130,7 @@ example:
 
 ROS services are fully supported, including automatic request and response type
 generation. For the `@rosimport` call, use the plain service type name. After
-`gentypes()`, the generated `.srv` submodule will contain 3 types: the plain
+`rostypegen()`, the generated `.srv` submodule will contain 3 types: the plain
 type, a request type, and a response type. For example `GetPlan`,
 `GetPlanRequest`, and `GetPlanResponse`. To provide the service to other nodes,
 you would create a `Service{GetPlan}` object. To call it, a

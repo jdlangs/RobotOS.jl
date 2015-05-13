@@ -6,7 +6,7 @@ using Compat
 @rosimport geometry_msgs.msg: PoseStamped, Vector3
 @rosimport std_srvs.srv.Empty
 @rosimport nav_msgs.srv.GetPlan
-gentypes()
+rostypegen()
 
 @test isdefined(:geometry_msgs)
 @test isdefined(:std_msgs)
