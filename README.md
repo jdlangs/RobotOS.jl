@@ -28,15 +28,15 @@ directly to version 1.0.
 
 ## Usage: Type Generation
 
-ROS message types are brought into your program with the `@rosimport` macro
-which specifies a package and one or more types. The three valid forms can be
-seen here:
+ROS types are brought into your program with the `@rosimport` macro which
+specifies a package and one or more types. The three valid syntax forms can be
+seen in these examples:
 
     @rosimport std_msgs.msg.Header
-    @rosimport geometry_msgs.msg: PoseStamped
-    @rosimport sensor_msgs.msg: Imu, Image
+    @rosimport nav_msgs.srv: GetPlan
+    @rosimport geometry_msgs.msg: PoseStamped, Vector3
 
-`@rosimport` will bring in the python modules for the requested type and all
+`@rosimport` will import the python modules for the requested type and all
 its dependencies but the native Julia types are not created yet since any
 inter-module dependencies have to be resolved first. After the final
 `@rosimport` call, initiate the message generation with:
@@ -125,6 +125,20 @@ example:
     sub2 = Subscriber{Imu}("topic", cb2, queue_size = 10)
     spin()
 
+### Using services
+
+ROS services are fully supported, including automatic request and response type
+generation. For the `@rosimport` call, use the plain service type name. After
+`gentypes()`, the generated `.srv` submodule will contain 3 types: the plain
+type, a request type, and a response type. For example `GetPlan`,
+`GetPlanRequest`, and `GetPlanResponse`. To provide the service to other nodes,
+you would create a `Service{GetPlan}` object. To call it,
+`ServiceProxy{GetPlan}`. The syntax exactly matches rospy to construct and use
+these objects. The only exception is in Julia v0.3, where the `call` is not
+overloaded for objects. In that case, you must call the `ServiceProxy` via
+`call(myproxy, myreq)` instead of the rospy method of `myproxy(myreq)` which
+works in later versions of Julia.
+
 ### Parameter Server
 
 `get_param`, `set_param`, `has_param`, and `delete_param` are all implemented
@@ -165,19 +179,29 @@ republishes them as Points.
     gentypes()
     using geometry_msgs.msg
 
-    callback(msg::Pose2D, pub_obj::Publisher{Point}) = begin
+    function callback(msg::Pose2D, pub_obj::Publisher{Point})
         pt_msg = Point(msg.x, msg.y, 0.0)
         publish(pub_obj, pt_msg)
     end
-    pub = Publisher{Point}("pts", queue_size=10)
-    sub = Subscriber{Pose2D}("pose", callback, (pub,), queue_size=10)
 
-    init_node("rosjl_example")
-    loop_rate = Rate(5.0)
-    while ! is_shutdown()
-        npt = Point(rand(), rand(), 0.0)
-        publish(pub, npt)
-        sleep(loop_rate)
+    function loop(pub_obj)
+        loop_rate = Rate(5.0)
+        while ! is_shutdown()
+            npt = Point(rand(), rand(), 0.0)
+            publish(pub_obj, npt)
+            sleep(loop_rate)
+        end
+    end
+
+    function main()
+        init_node("rosjl_example")
+        pub = Publisher{Point}("pts", queue_size=10)
+        sub = Subscriber{Pose2D}("pose", callback, (pub,), queue_size=10)
+        loop(pub)
+    end
+
+    if ! isinteractive()
+        main()
     end
 
 ## Versions
