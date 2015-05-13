@@ -391,12 +391,12 @@ function buildtype(mod::ROSSrvModule, typename::String)
     pyresp = :(RobotOS._rospy_objects[$resp_str])
     respexprs = typecode(resp_str, :SrvT, respmems)
 
-    defsym = symbol(name)
-    reqsym = symbol(string(name,"Request"))
-    respsym = symbol(string(name,"Response"))
+    defsym = symbol(typename)
+    reqsym = symbol(string(typename,"Request"))
+    respsym = symbol(string(typename,"Response"))
     srvexprs = Expr[
         :(type $defsym <: ServiceDefinition end),
-        :(_typerepr(::Type{$defsym}) = $(_rostypestr(mod,name))),
+        :(_typerepr(::Type{$defsym}) = $(_rostypestr(mod,typename))),
         :(_srv_reqtype(::Type{$defsym}) = $reqsym),
         :(_srv_resptype(::Type{$defsym}) = $respsym),
     ]
