@@ -3,6 +3,7 @@ using PyCall
 
 @rosimport std_msgs.msg.Empty
 @rosimport geometry_msgs.msg: PoseStamped, Vector3
+@rosimport std_srvs.srv.Empty
 @rosimport nav_msgs.srv.GetPlan
 gentypes()
 
@@ -27,6 +28,8 @@ posestamp = geometry_msgs.msg.PoseStamped()
 @test typeof(posestamp.pose.position) == geometry_msgs.msg.Point
 
 #service creation
+emptyreq = std_srvs.srv.EmptyRequest()
+emptyresp = std_srvs.srv.EmptyResponse()
 planreq = nav_msgs.srv.GetPlanRequest()
 planresp = nav_msgs.srv.GetPlanResponse()
 @test typeof(planreq) == nav_msgs.srv.GetPlanRequest

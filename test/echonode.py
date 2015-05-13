@@ -35,7 +35,7 @@ class Echo(object):
 
         rospy.wait_for_service("getplan")
         resp = self._srvcall(req)
-        for pose in resp.plan:
+        for pose in resp.plan.poses:
             self._pub.publish(pose)
 
 def main():

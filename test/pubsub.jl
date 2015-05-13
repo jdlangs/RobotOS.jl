@@ -1,8 +1,10 @@
 #Test publish and subscribe ability
-#works alongside republish.py
+#works alongside echonode.py
+#typegeneration.jl must be run first
 
 using geometry_msgs.msg
 init_node("jltest", anonymous=true)
+const t0 = to_nsec(get_rostime())
 
 const Nmsgs = 10
 const rate = 20. #Hz
@@ -14,20 +16,22 @@ for i=1:Nmsgs
 end
 
 function pose_cb(msg::PoseStamped, msgs::Vector{PoseStamped})
+    mtime = to_nsec(msg.header.stamp) - t0
+    println("Message received, time: ",mtime," nanoseconds")
     if msg.header.stamp.secs > 1.
         push!(msgs, msg)
     end
 end
 pose_cb(PoseStamped(), msgs)
 
-ros_pub = Publisher{Vector3}("vectors", queue_size = 10)
-ros_sub = Subscriber{PoseStamped}("poses", pose_cb, (msgs,), queue_size = 10)
+const ros_pub = Publisher{Vector3}("vectors", queue_size = 10)
+const ros_sub = Subscriber{PoseStamped}("poses", pose_cb, (msgs,), queue_size = 10)
 
 #First message doesn't go out for some reason
 publish(ros_pub, Vector3(1.1,2.2,3.3))
 RobotOS.sleep(1.0)
 
-r = Rate(20.0)
+const r = Rate(20.0)
 for i=1:Nmsgs
     publish(ros_pub, refs[i])
     RobotOS.sleep(r)

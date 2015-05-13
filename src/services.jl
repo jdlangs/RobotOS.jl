@@ -1,9 +1,12 @@
 #API for calling/creating services. Syntax is practically identical to rospy.
+export Service, ServiceProxy, wait_for_service
+import Base: call
 
 type ServiceProxy{SrvType <: ServiceDefinition}
     o::PyObject
     
     function ServiceProxy(name::String; kwargs...)
+        @debug("Creating <$SrvType> service proxy for '$name'")
         rospycls = _get_rospy_class(SrvType)
         new(__rospy__.ServiceProxy(name, rospycls; kwargs...))
     end
@@ -16,7 +19,7 @@ function ServiceProxy{SrvType<:ServiceDefinition}(
     ServiceProxy{SrvType}(name; kwargs...)
 end
 
-function Base.call{SrvType <: ServiceDefinition}(
+function call{SrvType <: ServiceDefinition}(
     srv::ServiceProxy{SrvType}, 
     req::SrvT
 )
@@ -34,9 +37,11 @@ type Service{SrvType <: ServiceDefinition}
     jl_handler::Function
 
     function Service(name::String, handler::Function; kwargs...)
+        @debug("Providing <$SrvType> service at '$name'")
         rospycls = _get_rospy_class(SrvType)
         ReqType = _srv_reqtype(SrvType)
-        jl_handler(req::PyObject) = handler(convert(ReqType,req))
+        jl_handler(req::PyObject) =
+            convert(PyObject, handler(convert(ReqType,req)))
         try
             new(__rospy__.Service(name, rospycls, jl_handler; kwargs...), 
                 jl_handler
