@@ -11,7 +11,6 @@ before_install:
   - sudo apt-get -y install ros-hydro-common-msgs
   - sudo rosdep init
   - rosdep update
-  - julia --eval 'Pkg.checkout("PyCall")'
 before_script:
   - source /opt/ros/hydro/setup.sh
   - roscore &
