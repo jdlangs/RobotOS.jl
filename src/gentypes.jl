@@ -214,9 +214,11 @@ end
 function _importdeps!(mod::ROSModule, deps::Vector)
     global _rospy_imports
     for d in deps
-        if ! (d in keys(_ros_builtin_types))
+        #We don't care about array types when doing dependency resolution
+        dclean = _check_array_type(d)[1]
+        if ! (dclean in keys(_ros_builtin_types))
             @debug("Dependency: ", d)
-            pkgname, typename = _splittypestr(d)
+            pkgname, typename = _splittypestr(dclean)
 
             @debug_addindent
             #Create a new ROSPackage if needed
@@ -230,9 +232,7 @@ function _importdeps!(mod::ROSModule, deps::Vector)
             #pushing to a set does not create duplicates
             push!(mod.deps, depmod.name)
 
-            #Don't want to include the brackets in the string if present
-            typeclean = _check_array_type(typename)[1]
-            addtype!(depmod, typeclean)
+            addtype!(depmod, typename)
             @debug_subindent
         end
     end
@@ -347,8 +347,13 @@ end
 
 #The exported names for each module
 function _exportexpr(mod::ROSMsgModule)
-    exports = [symbol(m) for m in mod.members]
-    Expr(:export, exports...)
+    exportexpr = Expr(:export)
+    for m in mod.members
+        push!(exportexpr.args, _nameconflicts(m) ?
+            symbol(string(m,"Msg")) :
+            symbol(m))
+    end
+    exportexpr
 end
 function _exportexpr(mod::ROSSrvModule)
     exportexpr = Expr(:export)
@@ -371,6 +376,11 @@ function buildtype(mod::ROSMsgModule, typename::String)
     memtypes = pyobj[:_slot_types]
     members = collect(zip(memnames, memtypes))
 
+    #Some ROS message names conflict with Julia built-in types
+    #Append 'Msg' to the type name to resolve
+    if _nameconflicts(typename)
+        fulltypestr = fulltypestr * "Msg"
+    end
     typecode(fulltypestr, :MsgT, members)
 end
 
@@ -608,6 +618,17 @@ function _get_rospy_class(typ::DataType)
             end
         end
     rospycls
+end
+
+#Check if the type name conflicts with a Julia builtin. Currently this is only
+#some of the messages from the std_msgs.msg package
+function _nameconflicts(typename::String)
+    try
+        eval(Base, symbol(typename))
+        true
+    catch
+        false
+    end
 end
 
 #Get a default value for any builtin ROS type

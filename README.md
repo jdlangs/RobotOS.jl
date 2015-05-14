@@ -55,6 +55,11 @@ generated type names into the local namespace.
     p = Path()
     v = Vector3(1.1,2.2,3.3)
 
+There is one special case, where the ROS type name conflicts with a built-in
+Julia type name (e.g., `std_msgs/Float64` or `std_msgs/String`). In these
+cases, the generated Julia type will have "Msg" appended to the name for
+disambiguation (e.g., `std_msgs.msg.Float64Msg` and `std_msgs.msg.StringMsg`).
+
 An additional function, `rostypereset()`, resets the type generation process,
 possibly useful for development in the REPL. When invoked, new `@rosimport`
 calls will be needed to generate the same or different types, and previously

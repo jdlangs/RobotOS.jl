@@ -6,6 +6,7 @@ using Compat
 @rosimport geometry_msgs.msg: PoseStamped, Vector3
 @rosimport std_srvs.srv.Empty
 @rosimport nav_msgs.srv.GetPlan
+@rosimport std_msgs.msg: Float64, String, Int8MultiArray
 rostypegen()
 
 @test isdefined(:geometry_msgs)
@@ -59,6 +60,12 @@ path2 = convert(nav_msgs.msg.Path, pypath)
 @test path2.poses[1].pose.position.y == 2.
 @test path2.poses[1].pose.position.z == 3.
 
-#Empty message
+#Issue #6 - Empty message
 emptymsg = std_msgs.msg.Empty()
 @test length(fieldnames(emptymsg)) == 0
+
+#Issue #7 - Renaming conflicting message types
+@test isdefined(std_msgs.msg, :Float64Msg)
+@test isdefined(std_msgs.msg, :StringMsg)
+intarr = std_msgs.msg.Int8MultiArray()
+@test typeof(intarr.data) == Vector{Int8}
