@@ -216,7 +216,7 @@ function _importdeps!(mod::ROSModule, deps::Vector)
     for d in deps
         #We don't care about array types when doing dependency resolution
         dclean = _check_array_type(d)[1]
-        if ! (dclean in keys(_ros_builtin_types))
+        if ! haskey(_ros_builtin_types, dclean)
             @debug("Dependency: ", d)
             pkgname, typename = _splittypestr(dclean)
 
@@ -496,13 +496,15 @@ function _addtypemember!(exprs, namestr, typestr)
     typestr, arraylen = _check_array_type(typestr)
     if _isrostype(typestr)
         j_typ = symbol(_splittypestr(typestr)[2])
+        #Default has to be deferred until the types exist
         j_def = Expr(:call, j_typ)
     else
         if ! haskey(_ros_builtin_types, typestr)
             error("Message generation; unknown type '$typestr'")
         end
         j_typ = _ros_builtin_types[typestr]
-        j_def = Expr(:call, :_typedefault, j_typ)
+        #Compute the default value now
+        j_def = @eval _typedefault($j_typ)
     end
 
     namesym = symbol(namestr)
