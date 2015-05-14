@@ -245,13 +245,7 @@ function _import_rospy_pkg(package::String)
         throw(ArgumentError("Improper import call for package: $package"))
     end
     pypkg = symbol(string("py_",pkg,"_",ptype))
-    newimport = try
-        eval(pypkg)
-        false
-    catch
-        true
-    end
-    if newimport
+    if ! isdefined(RobotOS, pypkg)
         @debug("Importing python package: ", package)
         pkgsym, mssym = symbol(pkg), symbol(ptype)
         try
@@ -421,7 +415,7 @@ end
 #Create the core generated expressions for a native Julia message type that has
 #data fields and interchanges with a python counterpart: 
 # (1) the 'type ... end' block
-# (2) No param outer constructer
+# (2) Default outer constructer with no arguments
 # (3) convert(PyObject, ...)
 # (4) convert(..., o::PyObject)
 function typecode(rosname::String, super::Symbol, members::Vector)
@@ -606,7 +600,7 @@ function _check_array_type(typ::String)
     btype, arraylen
 end
 
-#Get the ROS name string corresponding to a generated type
+#Get the rospy PyObject corresponding to a generated type
 function _get_rospy_class(typ::DataType)
     global _rospy_objects
     rospycls =
@@ -624,14 +618,7 @@ end
 
 #Check if the type name conflicts with a Julia builtin. Currently this is only
 #some of the messages from the std_msgs.msg package
-function _nameconflicts(typename::String)
-    try
-        eval(Base, symbol(typename))
-        true
-    catch
-        false
-    end
-end
+_nameconflicts(typename::String) = isdefined(Base, symbol(typename))
 
 #Get a default value for any builtin ROS type
 _typedefault{T<:Real}(::Type{T}) = zero(T)
