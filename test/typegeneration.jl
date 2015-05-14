@@ -6,7 +6,7 @@ using Compat
 @rosimport geometry_msgs.msg: PoseStamped, Vector3
 @rosimport std_srvs.srv.Empty
 @rosimport nav_msgs.srv.GetPlan
-@rosimport std_msgs.msg: Float64, String, Int8MultiArray
+@rosimport std_msgs.msg: Float64, String
 rostypegen()
 
 @test isdefined(:geometry_msgs)
@@ -67,5 +67,3 @@ emptymsg = std_msgs.msg.Empty()
 #Issue #7 - Renaming conflicting message types
 @test isdefined(std_msgs.msg, :Float64Msg)
 @test isdefined(std_msgs.msg, :StringMsg)
-intarr = std_msgs.msg.Int8MultiArray()
-@test typeof(intarr.data) == Vector{Int8}

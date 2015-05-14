@@ -30,14 +30,14 @@ const ros_sub = Subscriber{PoseStamped}("poses", pose_cb, (msgs,), queue_size = 
 
 #First message doesn't go out for some reason
 publish(ros_pub, Vector3(1.1,2.2,3.3))
-RobotOS.sleep(1.0)
+rossleep(Duration(1.0))
 
 const r = Rate(20.0)
 for i=1:Nmsgs
     publish(ros_pub, refs[i])
-    RobotOS.sleep(r)
+    rossleep(r)
 end
-RobotOS.sleep(1.0)
+rossleep(Duration(1.0))
 println("Received ",length(msgs)," / ",Nmsgs)
 
 @test length(msgs) == Nmsgs

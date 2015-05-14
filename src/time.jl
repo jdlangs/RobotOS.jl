@@ -1,7 +1,7 @@
 #All time related types and functions
 
-import Base: convert, isless
-export Time, Duration, Rate, to_sec, to_nsec, get_rostime
+import Base: convert, isless, sleep
+export Time, Duration, Rate, to_sec, to_nsec, get_rostime, rossleep
 
 #Time type definitions
 abstract TVal
@@ -59,8 +59,7 @@ convert(::Type{PyObject}, t::Duration) = __rospy__.Duration(t.secs,t.nsecs)
 #Real number conversions
 to_sec{T<:TVal}(t::T) = float64(t.secs) + 1e-9*float64(t.nsecs)
 to_nsec{T<:TVal}(t::T) = 1_000_000_000*t.secs + t.nsecs
-#seems to be broken
-#convert{T<:TVal}(::Type{Float64}, t::T) = to_sec(t)
+convert{T<:TVal}(::Type{Float64}, t::T) = to_sec(t)
 
 #Comparisons
 =={T<:TVal}(t1::T, t2::T)     = (t1.secs == t2.secs) && (t1.nsecs == t2.nsecs)
@@ -98,6 +97,8 @@ function get_rostime()
 end
 now() = get_rostime()
 
-sleep(t::Duration) = __rospy__.sleep(convert(PyObject, t))
-sleep(t::Real) = __rospy__.sleep(t)
-sleep(r::Rate) = pycall(r.o["sleep"], PyAny)
+rossleep(t::Real) = __rospy__.sleep(t)
+rossleep(t::Duration) = __rospy__.sleep(convert(PyObject, t))
+rossleep(r::Rate) = pycall(r.o["sleep"], PyAny)
+sleep(t::Duration) = rossleep(t)
+sleep(t::Rate) = rossleep(t)

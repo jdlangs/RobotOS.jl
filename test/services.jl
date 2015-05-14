@@ -36,14 +36,14 @@ call(srvcall, EmptyRequest())
 #Wait for call from echo
 println("Waiting for service call from echo..")
 while ! (flag[1] || is_shutdown())
-    RobotOS.sleep(Duration(0.1))
+    rossleep(Duration(0.1))
 end
 println("Response sent")
 
 #Listen for message replies caught by the geomety_msgs/PoseStamped subscriber
 #in pubsub.jl which populates the msgs global variable
 if flag[1]
-    RobotOS.sleep(Duration(2.0))
+    rossleep(Duration(2.0))
     @test length(msgs) == Nposes
     for i=1:Nposes
         @test_approx_eq(msgs[i].pose.position.z, i)

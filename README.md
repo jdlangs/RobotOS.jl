@@ -69,11 +69,9 @@ regenerated, the first version will remain.
 
 ## Usage: ROS API
 
-In general, the ROS api functions directly match those provided in rospy, with
-few cosmetic differences. The API functions can reviewed here:
-[http://wiki.ros.org/rospy/Overview](http://wiki.ros.org/rospy/Overview) The
-only large differences are the current lack of services, and custom ROS
-exceptions.
+In general, the API functions provided directly match those provided in rospy,
+with few cosmetic differences. The rospy API functions can reviewed here:
+[http://wiki.ros.org/rospy/Overview](http://wiki.ros.org/rospy/Overview)
 
 ### General Functions
 
@@ -92,12 +90,13 @@ for the rospy Rate, which keeps loops running on a near fixed time interval. It
 can be constructed with a `Duration` object, or a floating-point value,
 specifying the loop rate in Hz. Other functions are:
 
-- `get_rostime()`, `now()` : Current time as `Time` object.
+- `get_rostime()`, `RobotOS.now()` : Current time as `Time` object.
 - `to_sec(time_obj)`, `convert(Float64, time_obj)` : Convert `Time` or
 `Duration` object to floating-point number of seconds.
 - `to_nsec(time_obj)` : Convert object to integral number of nanoseconds.
-- `sleep(t::Duration)`, `sleep(t::FloatingPoint)`, `sleep(t::Rate)` : Sleep the
-amount implied by type and value of the `t` parameter.
+- `rossleep(t)` with `t` of type `Duration`, `Rate`, `Real`. Also
+`sleep(t::Duration)` and `sleep(t::Rate)` : Sleep the amount implied by type
+and value of the `t` parameter.
 
 ### Publishing Messages
 
