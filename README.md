@@ -1,6 +1,7 @@
 # RobotOS.jl
 
 [![Build Status](https://travis-ci.org/phobon/RobotOS.jl.svg?branch=master)](https://travis-ci.org/phobon/RobotOS.jl)
+[![Coverage Status](https://coveralls.io/repos/phobon/RobotOS.jl/badge.svg?branch=master)](https://coveralls.io/r/phobon/RobotOS.jl?branch=master)
 
 ## Overview
 

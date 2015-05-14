@@ -17,6 +17,8 @@ before_script:
   - sleep 5
   - python test/echonode.py &
   - sleep 5
+after_success:
+  - julia -e 'cd(Pkg.dir("RobotOS")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
 after_script:
   - killall roscore
   - killall python
