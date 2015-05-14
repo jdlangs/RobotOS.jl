@@ -2,6 +2,7 @@ using Base.Test
 using RobotOS
 RobotOS.debug(true)
 
-include("test_time.jl")
-include("test_types.jl")
-include("test_pubsub.jl")
+include("time.jl")
+include("typegeneration.jl")
+include("pubsub.jl")
+include("services.jl")

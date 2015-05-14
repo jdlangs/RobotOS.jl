@@ -3,9 +3,47 @@ using Compat
 
 export @rosimport, rostypegen, rostypereset, gentypes, cleartypes
 
-global const _rospy_classes = Dict{ASCIIString, PyObject}()
-global const _ros_typ_deps = Dict{ASCIIString, Set{ASCIIString}}()
-global const _ros_builtin_types = @compat Dict{ASCIIString, Symbol}(
+#Composite types for internal use. Keeps track of the imported types and helps
+#keep code generation orderly.
+abstract ROSModule
+type ROSMsgModule <: ROSModule
+    name::ASCIIString
+    members::Vector{ASCIIString}
+    deps::Set{ASCIIString}
+    function ROSMsgModule(mname::String)
+        new(mname, 
+            ASCIIString[],
+            Set{ASCIIString}()
+        )
+    end
+end
+type ROSSrvModule <: ROSModule
+    name::ASCIIString
+    members::Vector{ASCIIString}
+    deps::Set{ASCIIString}
+    function ROSSrvModule(mname::String)
+        new(mname, 
+            ASCIIString[],
+            Set{ASCIIString}()
+        )
+    end
+end
+type ROSPackage
+    name::ASCIIString
+    msg::ROSMsgModule
+    srv::ROSSrvModule
+    function ROSPackage(pkgname::String)
+        new(pkgname, ROSMsgModule(pkgname), ROSSrvModule(pkgname))
+    end
+end
+
+#These two global objects maintain the hierarchy from multiple calls to
+#`@rosimport` and keep the link to the Python objects whenever communication
+#goes between RobotOS and rospy.
+const _rospy_imports = Dict{ASCIIString,ROSPackage}()
+const _rospy_objects = Dict{ASCIIString,PyObject}()
+
+const _ros_builtin_types = @compat Dict{ASCIIString, Symbol}(
     "bool"    => :Bool,
     "int8"    => :Int8,
     "int16"   => :Int16,
@@ -24,12 +62,11 @@ global const _ros_builtin_types = @compat Dict{ASCIIString, Symbol}(
     "char"    => :Uint8,
     "byte"    => :Int8,
     )
-typezero{T<:Real}(::Type{T}) = zero(T)
-typezero(::Type{ASCIIString}) = ""
-typezero(::Type{Time}) = Time(0,0)
-typezero(::Type{Duration}) = Duration(0,0)
 
+#Abstract supertypes of all generated types
 abstract MsgT
+abstract SrvT
+abstract ServiceDefinition
 
 #Rearranges the expression into a RobotOS._usepkg call. Input comes in as a
 #single package qualified expression, or as a tuple expression where the first
@@ -41,29 +78,31 @@ macro rosimport(input)
         @assert isa(input.args[1], Expr) "Improper @rosimport input"
         @assert input.args[1].head == :(:) "First argument needs ':' following"
         types = ASCIIString[]
-        pkg, typ = _pkgtype_import(input.args[1])
+        pkg, ismsg, typ = _pkgtype_import(input.args[1])
         push!(types, typ)
         for t in input.args[2:end]
             @assert isa(t, Symbol) "Type name ($(string(t))) not a symbol"
             push!(types, string(t))
         end
-        return :(_usepkg($pkg, $types...))
+        return :(_usepkg($pkg, $ismsg, $types...))
     else
-        pkg, typ = _pkgtype_import(input)
-        return :(_usepkg($pkg, $typ))
+        pkg, ismsg, typ = _pkgtype_import(input)
+        return :(_usepkg($pkg, $ismsg, $typ))
     end
 end
 
 #Return the pkg and types strings for a single expression of form:
-#  pkg.msg.type or pkg.msg:type
+#  pkg.[msg|srv].type or pkg.[msg|srv]:type
 function _pkgtype_import(input::Expr)
-    @assert input.head in [:(.), :(:)]
+    @assert input.head in (:(.), :(:)) "Improper @rosimport input"
     @assert isa(input.args[1], Expr) "Improper @rosimport input"
     @assert input.args[1].head == :(.) "Improper @rosimport input"
-    @assert input.args[1].args[2].args[1] == :msg "Improper @rosimport input"
     p = input.args[1].args[1]
     @assert isa(p, Symbol) "Package name ($(string(p))) not a symbol"
+    m_or_s = input.args[1].args[2].args[1]
+    @assert m_or_s in (:msg,:srv) "Improper @rosimport input"
     ps = string(p)
+    msb = m_or_s == :msg
     ts = ""
     if isa(input.args[2], Symbol)
         ts = string(input.args[2])
@@ -73,245 +112,443 @@ function _pkgtype_import(input::Expr)
         @assert isa(tsym, Symbol) "Type name ($(string(tsym))) not a symbol"
         ts = string(tsym)
     end
-    return ps,ts
+    return ps,msb,ts
 end
 #Import a set of types from a single package
-function _usepkg(pkg::String, names::String...)
-    global _ros_typ_deps
+function _usepkg(package::String, ismsg::Bool, names::String...)
+    global _rospy_imports
+    if ! haskey(_rospy_imports, package)
+        @debug("Creating new package: ",package,".", ismsg ? "msg" : "srv") 
+        _rospy_imports[package] = ROSPackage(package)
+    end
+    rospypkg = _rospy_imports[package]
     for n in names
-        typestr = pkg * "/" * n
-        importtype(typestr, _ros_typ_deps)
+        addtype!(ismsg ? rospypkg.msg : rospypkg.srv, n)
     end
 end
 
 #Do the Julia type generation. This function is needed because we want to
 #create the modules in one go, rather than anytime @rosimport gets called
 function rostypegen()
-    global _ros_typ_deps
-    pkg_deps = _typ_to_pkg_deps(_ros_typ_deps)
-    pkglist = _order(pkg_deps)
+    global _rospy_imports
+    pkgdeps = _collectdeps(_rospy_imports)
+    pkglist = _order(pkgdeps)
     for pkg in pkglist
-        pkgtypes = filter(Regex("^$pkg/\\w+\$"), _ros_typ_deps)
-        mtypelist::Vector{ASCIIString} = _order(pkgtypes)
-        buildmodule(pkg, pkg_deps[pkg], mtypelist)
+        buildpackage(_rospy_imports[pkg])
     end
 end
 gentypes() = error("gentypes() renamed to rostypegen()")
 
 #Reset type generation process to start over with @rosimport. Does not remove
-#already generated modules! They will be replaced when gentypes is called
+#already generated modules! They will be replaced when rostypegen is called
 #again.
 function rostypereset()
-    global _ros_typ_deps
-    global _rospy_classes
-    empty!(_ros_typ_deps)
-    empty!(_rospy_classes)
+    global _rospy_imports
+    global _rospy_objects
+    empty!(_rospy_imports)
+    empty!(_rospy_objects)
     nothing
 end
 cleartypes() = error("cleartypes() renamed to rostypereset()")
 
-#Recursively import all needed messages for a given message
-function importtype(typestr::String, typ_deps::Dict)
-    global _rospy_classes
-    if ! haskey(_rospy_classes,typestr)
-        @debug("Importing: ", typestr)
-        pkg, name = _pkg_name_strs(typestr)
-        pkgi = symbol(string("py_",pkg))
-        pkgsym = symbol(pkg)
+#Populate the module with a new message type. Import and add dependencies first
+#so they will appear first in the generated code.
+function addtype!(mod::ROSMsgModule, typ::String)
+    global _rospy_objects
+    if ! (typ in mod.members)
+        @debug("Message type import: ", _modname(mod), ".", typ)
+        pymod, pyobj = _pyvars(_modname(mod), typ)
 
-        #Import python ROS module, no effect if already there
-        try
-            @eval @pyimport $pkgsym.msg as $pkgi
-        catch ex
-            error("python import error: $(ex.val[:args][1])")
+        deptypes = pyobj[:_slot_types]
+        _importdeps!(mod, deptypes)
+
+        push!(mod.members, typ)
+        _rospy_objects[_rostypestr(mod, typ)] = pyobj
+    end
+end
+
+#Populate the module with a new service type. Import and add dependencies
+#first.
+function addtype!(mod::ROSSrvModule, typ::String)
+    global _rospy_objects
+    if ! (typ in mod.members)
+        @debug("Service type import: ", _modname(mod), ".", typ)
+        pymod, pyobj = _pyvars(_modname(mod), typ)
+
+        if ! haskey(pyobj, "_request_class")
+            error(string("Incorrect service name: ", typ))
         end
-        #Store a reference to the message class definition
-        _rospy_classes[typestr] = try
-            @eval $pkgi.pymember($name)
+
+        #Immediately import dependencies from the Request/Response classes
+        #Repeats are OK
+        req_obj = pymod.pymember(string(typ,"Request"))
+        resp_obj = pymod.pymember(string(typ,"Response"))
+        deptypes = [req_obj[:_slot_types]; resp_obj[:_slot_types]]
+        _importdeps!(mod, deptypes)
+
+        push!(mod.members, typ)
+        fulltypestr = _rostypestr(mod, typ)
+        _rospy_objects[fulltypestr] = pyobj
+        _rospy_objects[string(fulltypestr,"Request")] = req_obj
+        _rospy_objects[string(fulltypestr,"Response")] = resp_obj
+    end
+end
+
+#Return the python module and python object for a particular type
+function _pyvars(modname::String, typ::String)
+    pymod = _import_rospy_pkg(modname)
+    pyobj =
+        try pymod.pymember(typ)
         catch ex
             if isa(ex, KeyError)
-                error("$name not found in package: $pkg")
+                error("$typ not found in package: $modname")
             else
                 rethrow(ex)
             end
         end
-        typ_deps[typestr] = Set{ASCIIString}()
-        subtypes = _rospy_classes[typestr][:_slot_types]
-        for t in subtypes
-            if _isrostype(t)
-                #Don't want to include the brackets in the string if present
-                t = _check_array_type(t)[1]
-                #pushing to a set does not create duplicates
-                push!(typ_deps[typestr], t)
+    pymod, pyobj
+end
 
-                importtype(t, typ_deps)
+#Continue the import process on a list of dependencies. Called by `addtype!`
+#and calls `addtype!` to complete the dependency recursion.
+function _importdeps!(mod::ROSModule, deps::Vector)
+    global _rospy_imports
+    for d in deps
+        if ! (d in keys(_ros_builtin_types))
+            @debug("Dependency: ", d)
+            pkgname, typename = _splittypestr(d)
+
+            @debug_addindent
+            #Create a new ROSPackage if needed
+            if ! haskey(_rospy_imports, pkgname)
+                @debug("Creating new package: ", pkgname)
+                _rospy_imports[pkgname] = ROSPackage(pkgname)
             end
+
+            #Dependencies will always be messages only
+            depmod = _rospy_imports[pkgname].msg
+            #pushing to a set does not create duplicates
+            push!(mod.deps, depmod.name)
+
+            #Don't want to include the brackets in the string if present
+            typeclean = _check_array_type(typename)[1]
+            addtype!(depmod, typeclean)
+            @debug_subindent
         end
     end
 end
 
-#Create the new module and build the new types inside
-function buildmodule(modname::String, deps::Set, types::Vector)
-    global _rospy_classes
-    #Module interior code expressions
-    modexprs = Expr[]
+#Bring in the python modules as needed
+function _import_rospy_pkg(package::String)
+    pkg, ptype = split(package, '.')
+    if ptype != "msg" && ptype != "srv" 
+        throw(ArgumentError("Improper import call for package: $package"))
+    end
+    pypkg = symbol(string("py_",pkg,"_",ptype))
+    newimport = try
+        eval(pypkg)
+        false
+    catch
+        true
+    end
+    if newimport
+        @debug("Importing python package: ", package)
+        pkgsym, mssym = symbol(pkg), symbol(ptype)
+        try
+            @eval @pyimport $(pkgsym).$(mssym) as $pypkg
+        catch ex
+            show(ex)
+            error("python import error: $(ex.val[:args][1])")
+        end
+    end
+    eval(pypkg)
+end
 
-    #Import/exports so the generated code can use external names
-    pymod = symbol(string("py_",modname))
-    push!(modexprs, 
+#The function that creates and fills the generated top-level modules
+function buildpackage(pkg::ROSPackage)
+    @debug("Building package: ", pkg.name)
+
+    #Create the top-level module for the package in Main
+    pkgsym = symbol(pkg.name)
+    pkgcode = Expr(:toplevel, :(module ($pkgsym) end))
+    Main.eval(pkgcode)
+    pkgmod = Main.eval(pkgsym)
+
+    #Add msg and srv submodules if needed
+    @debug_addindent
+    if length(pkg.msg.members) > 0
+        msgmod = :(module msg end)
+        msgcode = modulecode(pkg.msg)
+        for expr in msgcode
+            push!(msgmod.args[3].args, expr)
+        end
+        eval(pkgmod, msgmod)
+    end
+    if length(pkg.srv.members) > 0
+        srvmod = :(module srv end)
+        srvcode = modulecode(pkg.srv)
+        for expr in srvcode
+            push!(srvmod.args[3].args, expr)
+        end
+        eval(pkgmod, srvmod)
+    end
+    @debug_subindent
+end
+
+#Generate all code for a .msg or .srv module
+function modulecode(mod::ROSModule)
+    @debug("submodule: ", _modname(mod))
+    modcode = Expr[]
+
+    #Common imports
+    push!(modcode,
         quote
+            using PyCall
             import Base.convert
-            using  PyCall
             import RobotOS
-            using  RobotOS.MsgT
-            using  RobotOS.Time
-            using  RobotOS.Duration
-            using  RobotOS.typezero
+            import RobotOS.Time
+            import RobotOS.Duration
+            import RobotOS._typedefault
             import RobotOS._typerepr
         end
     )
-    push!(modexprs, Expr(:import, :RobotOS, pymod))
-    for m in deps
-        push!(modexprs, Expr(:using, symbol(m), :msg))
+    #Import statement specific to the module
+    append!(modcode, _importexprs(mod))
+    #The exported names
+    push!(modcode, _exportexpr(mod))
+
+    #The generated type codes
+    @debug_addindent
+    for typ in mod.members
+        typecode = buildtype(mod, typ)
+        append!(modcode, typecode)
     end
-    exports = Expr(:export)
-    for typ in types
-        push!(exports.args, symbol(_pkg_name_strs(typ)[2]))
-    end
-    push!(modexprs, exports)
-
-    #Type creation
-    for typ in types
-        memnames = _rospy_classes[typ]["__slots__"]
-        memtypes = _rospy_classes[typ]["_slot_types"]
-        members = [zip(memnames, memtypes)...]
-        typeexprs = buildtype(typ, members)
-
-        for ex in typeexprs 
-            push!(modexprs, ex)
-        end
-    end
-    #Create module
-    msgmod = :(module msg end)
-    append!(msgmod.args[3].args, modexprs)
-
-    modsym = symbol(modname)
-    modexp = Expr(:toplevel, :(module ($modsym) end))
-    push!(modexp.args[1].args[3].args, msgmod)
-
-    eval(Main, modexp)
-    mod = eval(Main, modsym)
-    mod
+    @debug_subindent
+    modcode
 end
 
-#Generate code for a native Julia message type
-#  - type/member declarations
-#  - convert to/from PyObject
-#  - default constructor
-function buildtype(typename::String, members::Vector)
-    global _ros_builtin_types
-    pkg, name = _pkg_name_strs(typename)
-    pymod = symbol(string("py_",pkg))
-    nsym = symbol(name)
-    @debug("Type: $name")
+#The imports specific to each module, including dependant packages
+function _importexprs(mod::ROSMsgModule)
+    imports = Expr[Expr(:import, :RobotOS, :MsgT)]
+    othermods = filter(d -> d != mod.name, mod.deps)
+    append!(imports, [Expr(:using,symbol(m),:msg) for m in othermods])
+    imports
+end
+function _importexprs(mod::ROSSrvModule)
+    imports = Expr[
+        Expr(:import, :RobotOS, :SrvT),
+        Expr(:import, :RobotOS, :ServiceDefinition),
+        Expr(:import, :RobotOS, :_srv_reqtype),
+        Expr(:import, :RobotOS, :_srv_resptype),
+    ]
+    append!(imports, [Expr(:using,symbol(m),:msg) for m in mod.deps])
+    imports
+end
 
-    exprs = Array(Expr, 4)
-    #Type declaration
-    exprs[1] = :(
-        type $nsym <: MsgT
+#The exported names for each module
+function _exportexpr(mod::ROSMsgModule)
+    exports = [symbol(m) for m in mod.members]
+    Expr(:export, exports...)
+end
+function _exportexpr(mod::ROSSrvModule)
+    exportexpr = Expr(:export)
+    for typ in mod.members
+        push!(exportexpr.args,
+            symbol(typ),
+            symbol(string(typ,"Request")),
+            symbol(string(typ,"Response"))
+        )
+    end
+    exportexpr
+end
+
+#All the generated code for a generated message type
+function buildtype(mod::ROSMsgModule, typename::String)
+    global _rospy_objects
+    fulltypestr = _rostypestr(mod, typename)
+    pyobj = _rospy_objects[fulltypestr]
+    memnames = pyobj[:__slots__]
+    memtypes = pyobj[:_slot_types]
+    members = collect(zip(memnames, memtypes))
+
+    typecode(fulltypestr, :MsgT, members)
+end
+
+#All the generated code for a generated service type
+#Will create 3 different composite types.
+function buildtype(mod::ROSSrvModule, typename::String)
+    global _rospy_objects
+    fulltypestr = _rostypestr(mod, typename)
+
+    req_str = string(fulltypestr,"Request")
+    reqobj = _rospy_objects[req_str]
+    memnames = reqobj[:__slots__]
+    memtypes = reqobj[:_slot_types]
+    reqmems = collect(zip(memnames, memtypes))
+    pyreq  = :(RobotOS._rospy_objects[$req_str])
+    reqexprs  = typecode(req_str, :SrvT, reqmems)
+
+    resp_str = string(fulltypestr,"Response")
+    respobj = _rospy_objects[resp_str]
+    memnames = respobj[:__slots__]
+    memtypes = respobj[:_slot_types]
+    respmems = collect(zip(memnames, memtypes))
+    pyresp = :(RobotOS._rospy_objects[$resp_str])
+    respexprs = typecode(resp_str, :SrvT, respmems)
+
+    defsym = symbol(typename)
+    reqsym = symbol(string(typename,"Request"))
+    respsym = symbol(string(typename,"Response"))
+    srvexprs = Expr[
+        :(type $defsym <: ServiceDefinition end),
+        :(_typerepr(::Type{$defsym}) = $(_rostypestr(mod,typename))),
+        :(_srv_reqtype(::Type{$defsym}) = $reqsym),
+        :(_srv_resptype(::Type{$defsym}) = $respsym),
+    ]
+    [reqexprs; respexprs; srvexprs]
+end
+
+#Create the core generated expressions for a native Julia message type that has
+#data fields and interchanges with a python counterpart: 
+# (1) the 'type ... end' block
+# (2) No param outer constructer
+# (3) convert(PyObject, ...)
+# (4) convert(..., o::PyObject)
+function typecode(rosname::String, super::Symbol, members::Vector)
+    pkg, tname = _splittypestr(rosname)
+    @debug("Type: ", tname)
+    tsym = symbol(tname)
+
+    exprs = Expr[]
+    #First the empty expressions
+    #(1) Type declaration
+    push!(exprs, :(
+        type $tsym <: $super
             #Generated code here
         end
-    )
-    #Convert from PyObject
-    exprs[2] = :(
-        convert(jlt::Type{$nsym}, o::PyObject) = begin
-            if o[:_type] != _typerepr(jlt)
-                throw(InexactError())
+    ))
+    #(2) Default constructor, but only if the type has members
+    if length(members) > 0
+        push!(exprs, :(
+            function $tsym()
+                $tsym() #Generated code inside parens here
             end
-            jl = $nsym()
-            #Generated code here
-            jl
-        end
-    )
-    #Convert to PyObject
-    exprs[3] = :(
-        convert(::Type{PyObject}, o::$nsym) = begin
-            py = ($pymod.$nsym)()
+        ))
+    else
+        push!(exprs, :())
+    end
+    #(3) Convert to PyObject
+    push!(exprs, :(
+        function convert(::Type{PyObject}, o::$tsym)
+            py = pycall(RobotOS._rospy_objects[$rosname], PyObject)
             #Generated code here
             py
         end
-    )
-    #Default constructor, but only if the type has members
-    exprs[4] = if length(members) > 0
-        :($nsym() = $nsym()) #Generated code inside previous parens
-    else
-        :()
-    end
-    typeargs  = exprs[1].args[3].args
-    jlconargs = exprs[2].args[2].args
-    pyconargs = exprs[3].args[2].args
-    consargs  = length(members) > 0 ? exprs[4].args[2].args : nothing
+    ))
+    #(4) Convert from PyObject
+    push!(exprs, :(
+        function convert(jlt::Type{$tsym}, o::PyObject)
+            if convert(ASCIIString, o["_type"]) != _typerepr(jlt)
+                throw(InexactError())
+            end
+            jl = $tsym()
+            #Generated code here
+            jl
+        end
+    ))
 
     #Now add the meat to the empty expressions above
     for (namestr,typ) in members
-        @debug("\t$namestr :: $typ")
-        if typ == "char" || typ == "byte"
-            warn("Use of type '$typ' is deprecated in message definitions, ",
-            "use '$(lowercase(string(_ros_builtin_types[typ])))' instead.")
-        end
-
-        typ, arraylen = _check_array_type(typ)
-        if _isrostype(typ)
-            j_typ = symbol(_pkg_name_strs(typ)[2])
-            j_def = Expr(:call, j_typ)
-        else
-            if ! haskey(_ros_builtin_types, typ)
-                error("Message generation; unknown type '$typ' in:\n$members")
-            end
-            j_typ = _ros_builtin_types[typ]
-            j_def = Expr(:call, :typezero, j_typ)
-        end
-
-        namesym = symbol(namestr)
-        if arraylen >= 0
-            memexpr = :($namesym::Array{$j_typ,1})
-            defexpr = Expr(:call, :fill, j_def, arraylen)
-            jlconexpr = :(jl.$namesym = convert(Array{$j_typ,1}, o[$namestr]))
-
-            #uint8[] is string in rospy and PyCall's conversion to bytearray is
-            #rejected by ROS
-            if j_typ == :Uint8
-                pyconexpr = :(py[$namestr] =
-                    pycall(pybuiltin("str"), PyObject, PyObject(o.$namesym))
-                )
-            elseif _isrostype(typ)
-                pyconexpr = :(py[$namestr] =
-                    convert(Array{PyObject,1}, o.$namesym))
-            else
-                pyconexpr = :(py[$namestr] = o.$namesym)
-            end
-        else
-            memexpr = :($namesym::$j_typ)
-            defexpr = j_def
-            jlconexpr = :(jl.$namesym = convert($j_typ, o[$namestr]))
-            pyconexpr = :(py[$namestr] = convert(PyObject, o.$namesym))
-        end
-        push!(typeargs, memexpr)
-        insert!(jlconargs, length(jlconargs), jlconexpr)
-        insert!(pyconargs, length(pyconargs), pyconexpr)
-        push!(consargs, defexpr)
+        @debug_addindent
+        _addtypemember!(exprs, namestr, typ)
+        @debug_subindent
     end
-    push!(exprs, :(_typerepr(::Type{$nsym}) = $typename))
-    return exprs
-end 
+    push!(exprs, :(_typerepr(::Type{$tsym}) = $rosname))
+    exprs
+end
 
-#Produce an order of the keys of d that respect their dependencies
+
+#Add the generated expression from a single member of a type, either built-in
+#or ROS type. `exprs` is the Expr objects of the items created in `typecode`.
+#Maybe this can be factored into something nicer.
+function _addtypemember!(exprs, namestr, typestr)
+    @debug("$namestr :: $typestr")
+    typeargs  = exprs[1].args[3].args
+    consargs  = exprs[2].args[2].args[2].args
+    pyconargs = exprs[3].args[2].args
+    jlconargs = exprs[4].args[2].args
+
+    if typestr == "char" || typestr == "byte"
+        warn("Use of type '$typestr' is deprecated in message definitions, ",
+        "use '$(lowercase(string(_ros_builtin_types[typestr])))' instead.")
+    end
+
+    typestr, arraylen = _check_array_type(typestr)
+    if _isrostype(typestr)
+        j_typ = symbol(_splittypestr(typestr)[2])
+        j_def = Expr(:call, j_typ)
+    else
+        if ! haskey(_ros_builtin_types, typestr)
+            error("Message generation; unknown type '$typestr'")
+        end
+        j_typ = _ros_builtin_types[typestr]
+        j_def = Expr(:call, :_typedefault, j_typ)
+    end
+
+    namesym = symbol(namestr)
+    if arraylen >= 0
+        memexpr = :($namesym::Array{$j_typ,1})
+        defexpr = Expr(:call, :fill, j_def, arraylen)
+        jlconexpr = :(jl.$namesym = convert(Array{$j_typ,1}, o[$namestr]))
+
+        #uint8[] is string in rospy and PyCall's conversion to bytearray is
+        #rejected by ROS
+        if j_typ == :Uint8
+            pyconexpr = :(py[$namestr] =
+                pycall(pybuiltin("str"), PyObject, PyObject(o.$namesym))
+            )
+        elseif _isrostype(typestr)
+            pyconexpr = :(py[$namestr] =
+                convert(Array{PyObject,1}, o.$namesym))
+        else
+            pyconexpr = :(py[$namestr] = o.$namesym)
+        end
+    else
+        memexpr = :($namesym::$j_typ)
+        defexpr = j_def
+        jlconexpr = :(jl.$namesym = convert($j_typ, o[$namestr]))
+        pyconexpr = :(py[$namestr] = convert(PyObject, o.$namesym))
+    end
+    push!(typeargs, memexpr)
+    insert!(jlconargs, length(jlconargs), jlconexpr)
+    insert!(pyconargs, length(pyconargs), pyconexpr)
+    push!(consargs, defexpr)
+end
+
+#Build a String => Iterable{String} object from the individual package
+#dependencies.
+function _collectdeps{S<:String}(pkgs::Dict{S, ROSPackage})
+    deps = Dict{ASCIIString, Set{ASCIIString}}()
+    for pname in keys(pkgs)
+        if ! haskey(deps, pname)
+            deps[pname] = Set{ASCIIString}()
+        end
+        union!(deps[pname], pkgs[pname].msg.deps)
+        union!(deps[pname], pkgs[pname].srv.deps)
+    end
+    deps
+end
+
+#Produce an order of the keys of d that respect their dependencies.
+#Assumed to be Dict(String => Iterable{String})
 function _order(d::Dict)
     trecurse!(currlist, d, t) = begin
         if ! (t in currlist)
             if haskey(d, t) #do dependencies first
                 for dt in d[t]
-                    trecurse!(currlist, d, dt)
+                    if dt != t
+                        trecurse!(currlist, d, dt)
+                    end
                 end
                 #Now it's ok to add it
                 push!(currlist, t)
@@ -325,30 +562,14 @@ function _order(d::Dict)
     tlist
 end
 
-#Produce a dict of package dependencies from the dependencies of the
-#fully-qualified type strings
-function _typ_to_pkg_deps(typ_deps::Dict)
-    pkg_deps = Dict{ASCIIString, Set{ASCIIString}}()
-    for (typ, deps) in collect(typ_deps)
-        tpkg = _pkg_name_strs(typ)[1]
-        if ! haskey(pkg_deps, tpkg)
-            pkg_deps[tpkg] = Set{ASCIIString}()
-        end
-        for d in deps
-            dpkg = _pkg_name_strs(d)[1]
-            if dpkg != tpkg
-                push!(pkg_deps[tpkg], dpkg)
-            end
-        end
-    end
-    pkg_deps
-end
-
-function _pkg_name_strs(typestr::String)
+_rostypestr(mod::ROSModule, name::String) = string(mod.name,"/",name)
+function _splittypestr(typestr::String)
     if ! _isrostype(typestr)
-        error("Invalid message type '$typestr', use 'package_name/type_name'")
+        error(string("Invalid message type '$typestr', ",
+                     "use 'package_name/type_name'"))
     end
-    split(typestr, '/')
+    rospkg, typ = split(typestr, '/')
+    rospkg, typ
 end
 #Valid ROS type string is all word chars split by a single forward slash, with
 #optional square brackets for array types
@@ -359,8 +580,7 @@ _isrostype(s::String) = ismatch(r"^\w+/\w+(?:\[\d*\])?$", s)
 #size type. Returns 0 if variable size (no number), -1 if no brackets
 function _check_array_type(typ::String)
     arraylen = -1
-    arrtest = r"^([\w/]+)\[(\d*)\]$"
-    m = match(arrtest, typ)
+    m = match(r"^([\w/]+)\[(\d*)\]$", typ)
     if m != nothing
         btype = m.captures[1]
         if isempty(m.captures[2])
@@ -374,6 +594,36 @@ function _check_array_type(typ::String)
     btype, arraylen
 end
 
+#Get the ROS name string corresponding to a generated type
+function _get_rospy_class(typ::DataType)
+    global _rospy_objects
+    rospycls =
+        try
+            _rospy_objects[_typerepr(typ)]
+        catch ex
+            if isa(ex, KeyError)
+                error("Type ($typ) is not generated")
+            else
+                error("Type ($typ) is not a valid message type")
+            end
+        end
+    rospycls
+end
+
+#Get a default value for any builtin ROS type
+_typedefault{T<:Real}(::Type{T}) = zero(T)
+_typedefault(::Type{ASCIIString}) = ""
+_typedefault(::Type{Time}) = Time(0,0)
+_typedefault(::Type{Duration}) = Duration(0,0)
+
 #Default method to get the "pkg/type" string from a generated DataType.
 #Extended by the generated modules.
 _typerepr{T}(::Type{T}) = error("Not a ROS type")
+
+#Default method to get the request/response datatypes for a generated service
+_srv_reqtype{T} (::Type{T}) = error("Not a ROS Service type")
+_srv_resptype{T}(::Type{T}) = error("Not a ROS Service type")
+
+#Get the full ROS name for a module (e.g., 'std_msgs.msg' or nav_msgs.srv')
+_modname(m::ROSMsgModule) = string(m.name, ".msg")
+_modname(m::ROSSrvModule) = string(m.name, ".srv")
