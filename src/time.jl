@@ -9,37 +9,38 @@ abstract TVal
 type Time <: TVal
     secs::Int32
     nsecs::Int32
-    Time(s,n) = begin 
+    function Time(s::Real,n::Real)
         cs, cns = _canonical_time(s,n)
         new(cs, cns)
     end
 end
 Time() = Time(0,0)
-Time(t::FloatingPoint) =
-    Time(floor(Int32, t), round(Int32, mod(t,1)*1e9))
+Time(t::Real) = Time(t,0)
 
 type Duration <: TVal
     secs::Int32
     nsecs::Int32
-    Duration(s,n) = begin
+    function Duration(s::Real,n::Real)
         cs, cns = _canonical_time(s,n)
         new(cs, cns)
     end
 end
 Duration() = Duration(0,0)
-Duration(t::FloatingPoint) =
-    Duration(floor(Int32,t), round(Int32, mod(t,1)*1e9))
+Duration(t::Real) = Duration(t,0)
 
 #Enforce 0 <= nsecs < 1e9
-function _canonical_time(secs::Integer, nsecs::Integer)
-    nsec_conv = int32(1_000_000_000)
-    dsecs  = convert(Int32, div(nsecs, nsec_conv))
-    rnsecs = convert(Int32, rem(nsecs, nsec_conv))
-    if rnsecs < 0
-        dsecs = dsecs - one(Int32)
-        rnsecs = rnsecs + nsec_conv
+function _canonical_time(secs, nsecs)
+    nsec_conv = convert(Int32, 1_000_000_000)
+    secs32  = floor(Int32, secs)
+    nsecs32 = floor(Int32, mod(secs,1)*1e9 + nsecs)
+
+    addsecs = div(nsecs32, nsec_conv)
+    crnsecs = rem(nsecs32, nsec_conv)
+    if crnsecs < 0
+        addsecs -= one(Int32)
+        crnsecs += nsec_conv
     end
-    (secs + dsecs, rnsecs)
+    (secs32 + addsecs, crnsecs)
 end
 
 #Temporal arithmetic
@@ -57,7 +58,7 @@ convert(::Type{PyObject}, t::Time)     = __rospy__.Time    (t.secs,t.nsecs)
 convert(::Type{PyObject}, t::Duration) = __rospy__.Duration(t.secs,t.nsecs)
 
 #Real number conversions
-to_sec{T<:TVal}(t::T) = float64(t.secs) + 1e-9*float64(t.nsecs)
+to_sec{T<:TVal}(t::T) = t.secs + 1e-9*t.nsecs
 to_nsec{T<:TVal}(t::T) = 1_000_000_000*t.secs + t.nsecs
 convert{T<:TVal}(::Type{Float64}, t::T) = to_sec(t)
 
@@ -72,7 +73,7 @@ isless{T<:TVal}(t1::T, t2::T) = to_nsec(t1) < to_nsec(t2)
 type Rate
     o::PyObject
 end
-Rate(hz::FloatingPoint) = Rate(__rospy__.Rate(hz))
+Rate(hz::Real) = Rate(__rospy__.Rate(hz))
 Rate(d::Duration) = Rate(1.0/to_sec(d))
 
 type Timer
