@@ -1,7 +1,11 @@
 using Base.Test
 using RobotOS
+using Compat
 RobotOS.debug(true)
 
+#Generally, later tests rely on things defined in previous tests, so the order
+#is important
+include("rospy.jl")
 include("time.jl")
 include("typegeneration.jl")
 include("pubsub.jl")

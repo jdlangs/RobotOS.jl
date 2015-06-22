@@ -3,13 +3,12 @@
 #typegeneration.jl must be run first
 
 using geometry_msgs.msg
-init_node("jltest", anonymous=true)
-const t0 = to_nsec(get_rostime())
 
 const Nmsgs = 10
 const rate = 20. #Hz
 const msgs = PoseStamped[]
 const refs = Array(Vector3, Nmsgs)
+const t0 = to_nsec(get_rostime())
 
 for i=1:Nmsgs
     refs[i] = Vector3(rand(3)...)

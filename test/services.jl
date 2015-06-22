@@ -1,4 +1,4 @@
-#typegeneration.jl and pubsub.jl must be run first
+#pubsub.jl must be run first
 
 using std_srvs.srv
 using nav_msgs.srv
@@ -24,8 +24,8 @@ function srv_cb(req::GetPlanRequest)
     return resp
 end
 
-const srvcall = ServiceProxy{Empty}("callme")
-const srvlisten = Service{GetPlan}("getplan", srv_cb)
+const srvcall = ServiceProxy("callme", Empty)
+const srvlisten = Service("getplan", GetPlan, srv_cb)
 
 #Call echo's Empty service
 println("Waiting for 'callme' service...")
@@ -49,3 +49,7 @@ if flag[1]
         @test_approx_eq(msgs[i].pose.position.z, i)
     end
 end
+
+#Test error handling
+@test_throws ErrorException wait_for_service("fake_srv", timeout=1.0)
+@test_throws ArgumentError call(srvcall, EmptyResponse())
