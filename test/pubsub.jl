@@ -24,8 +24,8 @@ function pose_cb(msg::PoseStamped, msgs::Vector{PoseStamped})
 end
 pose_cb(PoseStamped(), msgs)
 
-const ros_pub = Publisher{Vector3}("vectors", queue_size = 10)
-const ros_sub = Subscriber{PoseStamped}("poses", pose_cb, (msgs,), queue_size = 10)
+const ros_pub = Publisher("vectors", Vector3, queue_size = 10)
+const ros_sub = Subscriber("poses", PoseStamped, pose_cb, (msgs,), queue_size = 10)
 
 #First message doesn't go out for some reason
 publish(ros_pub, Vector3(1.1,2.2,3.3))

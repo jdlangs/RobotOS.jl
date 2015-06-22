@@ -18,11 +18,11 @@ delete_param("some_param")
 #Really just running this stuff for coverage
 
 #Logging
-logdebug("%s", "debug")
-loginfo("%s", "info")
-logwarn("%s", "warn")
-logerr("%s", "err")
-logfatal("%s", "fatal")
+logdebug("testing: %s", "debug")
+loginfo("testing: %s", "info")
+logwarn("testing: %s", "warn")
+logerr("testing: %s", "err")
+logfatal("testing: %s", "fatal")
 @test ! is_shutdown()
 
 #Generic stuff

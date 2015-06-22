@@ -40,9 +40,25 @@ dt.secs = 3
 @test to_sec(dt) == 3.0
 @test to_nsec(dt) == 3_000_000_000
 
-@test tt + dt == Time(5.0)
+@test dt + tt == Time(5.0)
 @test dt + dt == Duration(6.0)
 
+#PyObject stuff
+ptt = convert(PyCall.PyObject, tt)
+@test ptt[:secs] == 2
+@test ptt[:nsecs] == 0
+ptt[:nsecs] = 101
+tt2 = convert(Time, ptt)
+@test to_nsec(tt2) == 2_000_000_101
+
+pdt = convert(PyCall.PyObject, dt)
+@test pdt[:secs] == 3
+@test pdt[:nsecs] == 0
+pdt[:nsecs] = 202
+dt2 = convert(Duration, pdt)
+@test to_nsec(dt2) == 3_000_000_202
+
+#rostime and sleeping
 t1 = get_rostime()
 rossleep(0.5)
 t2 = get_rostime()
@@ -60,7 +76,7 @@ t3 = RobotOS.now()
 @test t3 - t1 >= Duration(0.8)
 
 t1 = get_rostime()
-RobotOS.sleep(0.5)
+RobotOS.sleep(Duration(0.5))
 t2 = get_rostime()
 @test t2 - t1 >= Duration(0.4)
 
