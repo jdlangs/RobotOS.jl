@@ -19,10 +19,10 @@ end
 
 type Subscriber{MsgType<:MsgT}
     o::PyObject
-    callback::Function
+    callback
 
     function Subscriber(
-        topic::String, cb::Function, cb_args = (); kwargs...
+        topic::String, cb, cb_args::Tuple=(); kwargs...
     )
         @debug("Creating <$(string(MsgType))> subscriber on topic: '$topic'")
         rospycls = _get_rospy_class(MsgType)
@@ -36,7 +36,7 @@ end
 Subscriber{MsgType<:MsgT}(
     topic::String,
     ::Type{MsgType},
-    cb::Function,
-    cb_args = ();
+    cb,
+    cb_args::Tuple=();
     kwargs...
 ) = Subscriber{MsgType}(topic, cb, cb_args; kwargs...)

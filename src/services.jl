@@ -39,9 +39,9 @@ end
 
 type Service{SrvType <: ServiceDefinition}
     o::PyObject
-    jl_handler::Function
+    jl_handler
 
-    function Service(name::String, handler::Function; kwargs...)
+    function Service(name::String, handler; kwargs...)
         @debug("Providing <$SrvType> service at '$name'")
         rospycls = _get_rospy_class(SrvType)
         ReqType = _srv_reqtype(SrvType)
@@ -63,7 +63,7 @@ end
 function Service{SrvType<:ServiceDefinition}(
     name::String,
     srv::Type{SrvType},
-    handler::Function;
+    handler;
     kwargs...
 )
     Service{SrvType}(name, handler; kwargs...)
