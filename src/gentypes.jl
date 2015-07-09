@@ -631,7 +631,7 @@ _typedefault(::Type{Duration}) = Duration(0,0)
 _typerepr{T}(::Type{T}) = error("Not a ROS type")
 
 #Default method to get the request/response datatypes for a generated service
-_srv_reqtype{T} (::Type{T}) = error("Not a ROS Service type")
+_srv_reqtype{T}( ::Type{T}) = error("Not a ROS Service type")
 _srv_resptype{T}(::Type{T}) = error("Not a ROS Service type")
 
 #Get the full ROS name for a module (e.g., 'std_msgs.msg' or nav_msgs.srv')

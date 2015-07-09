@@ -52,9 +52,9 @@ end
 -(t1::Time,     t2::Time)     = Duration(t1.secs-t2.secs, t1.nsecs-t2.nsecs)
 
 #PyObject conversions
-convert(::Type{Time},     o::PyObject) = Time    (o[:secs],o[:nsecs])
+convert(::Type{Time},     o::PyObject) = Time(    o[:secs],o[:nsecs])
 convert(::Type{Duration}, o::PyObject) = Duration(o[:secs],o[:nsecs])
-convert(::Type{PyObject}, t::Time)     = __rospy__.Time    (t.secs,t.nsecs)
+convert(::Type{PyObject}, t::Time)     = __rospy__.Time(    t.secs,t.nsecs)
 convert(::Type{PyObject}, t::Duration) = __rospy__.Duration(t.secs,t.nsecs)
 
 #Real number conversions
