@@ -504,7 +504,7 @@ function _addtypemember!(exprs, namestr, typestr)
     namesym = symbol(namestr)
     if arraylen >= 0
         memexpr = :($namesym::Array{$j_typ,1})
-        defexpr = Expr(:call, :fill, j_def, arraylen)
+        defexpr = :([$j_def for i = 1:$arraylen])
         jlconexpr = :(jl.$namesym = convert(Array{$j_typ,1}, o[$namestr]))
 
         #uint8[] is string in rospy and PyCall's conversion to bytearray is
