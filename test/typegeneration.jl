@@ -2,11 +2,15 @@
 using PyCall
 using Compat
 
-@rosimport std_msgs.msg.Empty
 @rosimport geometry_msgs.msg: PoseStamped, Vector3
 @rosimport std_srvs.srv.Empty
 @rosimport nav_msgs.srv.GetPlan
+@rosimport std_msgs.msg: Empty
 @rosimport std_msgs.msg: Float64, String
+
+@test_throws ErrorException @rosimport fake_msgs.msg.FakeMsg
+@test_throws KeyError @rosimport std_msgs.msg.FakeMsg
+@test_throws ErrorException @rosimport nav_msgs.srv.GetPlanRequest
 rostypegen()
 
 @test isdefined(:geometry_msgs)
@@ -47,6 +51,7 @@ pose2 = convert(geometry_msgs.msg.PoseStamped, pypose)
 @test pose2.pose.position.x == 1.
 @test pose2.pose.position.y == 2.
 @test pose2.pose.position.z == 3.
+@test_throws InexactError convert(geometry_msgs.msg.Pose, pypose)
 
 #Proper array handling
 path = nav_msgs.msg.Path()
