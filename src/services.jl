@@ -13,7 +13,7 @@ type ServiceProxy{SrvType <: ServiceDefinition}
     function ServiceProxy(name::String; kwargs...)
         @debug("Creating <$SrvType> service proxy for '$name'")
         rospycls = _get_rospy_class(SrvType)
-        new(__rospy__.ServiceProxy(name, rospycls; kwargs...))
+        new(__rospy__[:ServiceProxy](name, rospycls; kwargs...))
     end
 end
 function ServiceProxy{SrvType<:ServiceDefinition}(
@@ -48,7 +48,7 @@ type Service{SrvType <: ServiceDefinition}
         jl_handler(req::PyObject) =
             convert(PyObject, handler(convert(ReqType,req)))
         try
-            new(__rospy__.Service(name, rospycls, jl_handler; kwargs...), 
+            new(__rospy__[:Service](name, rospycls, jl_handler; kwargs...),
                 jl_handler
             )
         catch err
@@ -71,7 +71,7 @@ end
 
 function wait_for_service(service::String; kwargs...)
     try
-        __rospy__.wait_for_service(service; kwargs...)
+        __rospy__[:wait_for_service](service; kwargs...)
     catch ex
         error("Timeout exceeded waiting for service '$service'")
     end

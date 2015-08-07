@@ -7,7 +7,7 @@ type Publisher{MsgType<:MsgT}
     function Publisher(topic::String; kwargs...)
         @debug("Creating <$(string(MsgType))> publisher on topic: '$topic'")
         rospycls = _get_rospy_class(MsgType)
-        return new(__rospy__.Publisher(topic, rospycls; kwargs...))
+        return new(__rospy__[:Publisher](topic, rospycls; kwargs...))
     end
 end
 Publisher{MsgType<:MsgT}(topic::String, ::Type{MsgType}; kwargs...) =
@@ -28,7 +28,7 @@ type Subscriber{MsgType<:MsgT}
         rospycls = _get_rospy_class(MsgType)
         jl_callback(msg::PyObject) = cb(convert(MsgType, msg), cb_args...)
         return new(
-            __rospy__.Subscriber(topic, rospycls, jl_callback; kwargs...),
+            __rospy__[:Subscriber](topic, rospycls, jl_callback; kwargs...),
             jl_callback
         )
     end

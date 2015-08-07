@@ -2,7 +2,7 @@ module RobotOS
 
 using PyCall
 const __rospy__ = try
-    pywrap(pyimport("rospy"))
+    pyimport("rospy")
 catch ex
     if ex.val[:args][1] == "No module named rospy"
         error("rospy not found!\nHas an environment setup script been run?")

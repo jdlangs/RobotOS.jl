@@ -4,46 +4,46 @@ export init_node, is_shutdown, spin,
        logdebug, loginfo, logwarn, logerr, logfatal
 
 #General rospy functions
-init_node(name::String; args...) = __rospy__.init_node(name; args...)
-spin()                 = __rospy__.spin()
-is_shutdown()          = __rospy__.is_shutdown()
-get_published_topics() = __rospy__.get_published_topics()
-get_ros_root()         = __rospy__.get_ros_root()
+init_node(name::String; args...) = __rospy__[:init_node](name; args...)
+spin()                 = __rospy__[:spin]()
+is_shutdown()          = __rospy__[:is_shutdown]()
+get_published_topics() = __rospy__[:get_published_topics]()
+get_ros_root()         = __rospy__[:get_ros_root]()
 
 #Parameter server API
 get_param(param_name::String, def=nothing) = begin
     try
         if def == nothing
-            __rospy__.get_param(param_name)
+            __rospy__[:get_param](param_name)
         else
-            __rospy__.get_param(param_name, def)
+            __rospy__[:get_param](param_name, def)
         end
     catch ex
         throw(KeyError(pycall(pybuiltin("str"), PyAny, ex.val)[2:end-1]))
     end
 end
-set_param(param_name::String, val) = __rospy__.set_param(param_name, val)
-has_param(param_name::String) = __rospy__.has_param(param_name)
+set_param(param_name::String, val) = __rospy__[:set_param](param_name, val)
+has_param(param_name::String) = __rospy__[:has_param](param_name)
 delete_param(param_name::String) = begin
     try
-        __rospy__.delete_param(param_name)
+        __rospy__[:delete_param](param_name)
     catch ex
         throw(KeyError(pycall(pybuiltin("str"), PyAny, ex.val)[2:end-1]))
     end
 end
 #Doesn't work for some reason
-#rospy_search_param(param_name::String) = __rospy__.rospy_search_param(param_name)
-get_param_names() = __rospy__.get_param_names()
+#rospy_search_param(param_name::String) = __rospy__[:rospy_search_param](param_name)
+get_param_names() = __rospy__[:get_param_names]()
 
 #Logging API
-logdebug(msg, args...) = __rospy__.logdebug(msg, args...)
-loginfo(msg, args...)  = __rospy__.loginfo(msg, args...)
-logwarn(msg, args...)  = __rospy__.logwarn(msg, args...)
-logerr(msg, args...)   = __rospy__.logerr(msg, args...)
-logfatal(msg, args...) = __rospy__.logfatal(msg, args...)
+logdebug(msg, args...) = __rospy__[:logdebug](msg, args...)
+loginfo(msg, args...)  = __rospy__[:loginfo](msg, args...)
+logwarn(msg, args...)  = __rospy__[:logwarn](msg, args...)
+logerr(msg, args...)   = __rospy__[:logerr](msg, args...)
+logfatal(msg, args...) = __rospy__[:logfatal](msg, args...)
 
 #Node information
-get_name()             = __rospy__.get_name()
-get_namespace()        = __rospy__.get_namespace()
-get_node_uri()         = __rospy__.get_node_uri()
-get_caller_id()        = __rospy__.get_caller_id()
+get_name()             = __rospy__[:get_name]()
+get_namespace()        = __rospy__[:get_namespace]()
+get_node_uri()         = __rospy__[:get_node_uri]()
+get_caller_id()        = __rospy__[:get_caller_id]()

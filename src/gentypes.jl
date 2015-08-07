@@ -3,6 +3,7 @@ using Compat
 
 export @rosimport, rostypegen, rostypereset, gentypes, cleartypes
 
+#Type definitions
 #Composite types for internal use. Keeps track of the imported types and helps
 #keep code generation orderly.
 abstract ROSModule

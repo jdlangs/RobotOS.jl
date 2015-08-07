@@ -54,8 +54,8 @@ end
 #PyObject conversions
 convert(::Type{Time},     o::PyObject) = Time(    o[:secs],o[:nsecs])
 convert(::Type{Duration}, o::PyObject) = Duration(o[:secs],o[:nsecs])
-convert(::Type{PyObject}, t::Time)     = __rospy__.Time(    t.secs,t.nsecs)
-convert(::Type{PyObject}, t::Duration) = __rospy__.Duration(t.secs,t.nsecs)
+convert(::Type{PyObject}, t::Time)     = __rospy__[:Time](    t.secs,t.nsecs)
+convert(::Type{PyObject}, t::Duration) = __rospy__[:Duration](t.secs,t.nsecs)
 
 #Real number conversions
 to_sec{T<:TVal}(t::T) = t.secs + 1e-9*t.nsecs
@@ -73,7 +73,7 @@ isless{T<:TVal}(t1::T, t2::T) = to_nsec(t1) < to_nsec(t2)
 type Rate
     o::PyObject
 end
-Rate(hz::Real) = Rate(__rospy__.Rate(hz))
+Rate(hz::Real) = Rate(__rospy__[:Rate](hz))
 Rate(d::Duration) = Rate(1.0/to_sec(d))
 
 type Timer
@@ -90,7 +90,7 @@ end
 
 function get_rostime()
     t = try
-        __rospy__.get_rostime()
+        __rospy__[:get_rostime]()
     catch ex
         error(pycall(pybuiltin("str"), PyAny, ex.val))
     end
@@ -98,8 +98,8 @@ function get_rostime()
 end
 now() = get_rostime()
 
-rossleep(t::Real) = __rospy__.sleep(t)
-rossleep(t::Duration) = __rospy__.sleep(convert(PyObject, t))
+rossleep(t::Real) = __rospy__[:sleep](t)
+rossleep(t::Duration) = __rospy__[:sleep](convert(PyObject, t))
 rossleep(r::Rate) = pycall(r.o["sleep"], PyAny)
 sleep(t::Duration) = rossleep(t)
 sleep(t::Rate) = rossleep(t)
