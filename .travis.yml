@@ -17,8 +17,6 @@ before_script:
   - sleep 5
   - python test/echonode.py &
   - sleep 5
-  - julia -e 'Pkg.add("PyCall")'
-  - julia -e 'Pkg.checkout("PyCall")'
 after_success:
   - julia -e 'cd(Pkg.dir("RobotOS")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
 after_script:

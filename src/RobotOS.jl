@@ -4,8 +4,11 @@ using PyCall
 const __rospy__ = try
     pyimport("rospy")
 catch ex
-    if ex.val[:args][1] == "No module named rospy"
+    if (isa(ex, PyCall.PyError) &&
+        pycall(pybuiltin("str"), PyAny, ex.val) == "No module named rospy")
         error("rospy not found!\nHas an environment setup script been run?")
+    else
+        rethrow(ex)
     end
 end
 
