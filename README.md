@@ -195,7 +195,7 @@ republishes them as Points.
         while ! is_shutdown()
             npt = Point(rand(), rand(), 0.0)
             publish(pub_obj, npt)
-            sleep(loop_rate)
+            rossleep(loop_rate)
         end
     end
 

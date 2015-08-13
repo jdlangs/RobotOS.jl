@@ -1,6 +1,6 @@
 #All time related types and functions
 
-import Base: convert, isless
+import Base: convert, isless, sleep
 export Time, Duration, Rate, to_sec, to_nsec, get_rostime, rossleep
 
 #Time type definitions
