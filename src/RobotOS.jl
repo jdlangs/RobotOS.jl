@@ -1,20 +1,23 @@
 module RobotOS
 
 using PyCall
-const __rospy__ = try
-    pyimport("rospy")
-catch ex
-    if (isa(ex, PyCall.PyError) &&
-        pycall(pybuiltin("str"), PyAny, ex.val) == "No module named rospy")
-        error("rospy not found!\nHas an environment setup script been run?")
-    else
-        rethrow(ex)
+
+function __init__()
+    #Put julia's ARGS into python's so remappings will work
+    global const __sys__ = pyimport("sys")
+    __sys__["argv"] = ARGS
+
+    global const __rospy__ = try
+        pyimport("rospy")
+    catch ex
+        if (isa(ex, PyCall.PyError) &&
+            pycall(pybuiltin("str"), PyAny, ex.val) == "No module named rospy")
+            error("rospy not found!\nHas an environment setup script been run?")
+        else
+            rethrow(ex)
+        end
     end
 end
-
-#Put julia's ARGS into python's so remappings will work
-py_sys = pyimport("sys")
-py_sys["argv"] = ARGS
 
 include("debug.jl")
 include("time.jl")
