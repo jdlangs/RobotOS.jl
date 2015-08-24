@@ -36,6 +36,7 @@ end
 #goes between RobotOS and rospy.
 const _rospy_imports = Dict{ASCIIString,ROSPackage}()
 const _rospy_objects = Dict{ASCIIString,PyObject}()
+const _rospy_modules = Dict{ASCIIString,PyObject}()
 
 const _ros_builtin_types = @compat Dict{ASCIIString, Symbol}(
     "bool"    => :Bool,
@@ -175,8 +176,8 @@ function addtype!(mod::ROSSrvModule, typ::String)
 
         #Immediately import dependencies from the Request/Response classes
         #Repeats are OK
-        req_obj = pymod.pymember(string(typ,"Request"))
-        resp_obj = pymod.pymember(string(typ,"Response"))
+        req_obj = pymod[string(typ,"Request")]
+        resp_obj = pymod[string(typ,"Response")]
         deptypes = [req_obj[:_slot_types]; resp_obj[:_slot_types]]
         _importdeps!(mod, deptypes)
 
@@ -192,7 +193,7 @@ end
 function _pyvars(modname::String, typ::String)
     pymod = _import_rospy_pkg(modname)
     pyobj =
-        try pymod.pymember(typ)
+        try pymod[typ]
         catch ex
             if isa(ex, KeyError)
                 throw(KeyError("'$typ' in package '$modname'"))
@@ -234,19 +235,17 @@ end
 
 #Bring in the python modules as needed
 function _import_rospy_pkg(package::String)
-    pkg, ptype = split(package, '.')
-    pypkg = symbol(string("py_",pkg,"_",ptype))
-    if ! isdefined(RobotOS, pypkg)
+    global _rospy_modules
+    if ! haskey(_rospy_modules, package)
         @debug("Importing python package: ", package)
-        pkgsym, mssym = symbol(pkg), symbol(ptype)
         try
-            @eval @pyimport $(pkgsym).$(mssym) as $pypkg
+            _rospy_modules[package] = pyimport(package)
         catch ex
             show(ex)
             error("python import error: $(ex.val[:args][1])")
         end
     end
-    eval(pypkg)
+    _rospy_modules[package]
 end
 
 #The function that creates and fills the generated top-level modules
