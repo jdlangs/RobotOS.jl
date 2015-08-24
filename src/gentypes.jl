@@ -149,7 +149,7 @@ cleartypes() = error("cleartypes() renamed to rostypereset()")
 #so they will appear first in the generated code.
 function addtype!(mod::ROSMsgModule, typ::String)
     global _rospy_objects
-    if ! (typ in mod.members)
+    if !(typ in mod.members)
         @debug("Message type import: ", _fullname(mod), ".", typ)
         pymod, pyobj = _pyvars(_fullname(mod), typ)
 
@@ -165,7 +165,7 @@ end
 #first.
 function addtype!(mod::ROSSrvModule, typ::String)
     global _rospy_objects
-    if ! (typ in mod.members)
+    if !(typ in mod.members)
         @debug("Service type import: ", _fullname(mod), ".", typ)
         pymod, pyobj = _pyvars(_fullname(mod), typ)
 
@@ -539,7 +539,7 @@ end
 #Assumed to be Dict(String => Iterable{String})
 function _order(d::Dict)
     trecurse!(currlist, d, t) = begin
-        if ! (t in currlist)
+        if !(t in currlist)
             if haskey(d, t) #do dependencies first
                 for dt in d[t]
                     if dt != t
