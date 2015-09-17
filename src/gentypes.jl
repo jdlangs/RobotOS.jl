@@ -285,6 +285,12 @@ function modulecode(mod::ROSModule)
     modcode = Expr[]
 
     #Common imports
+    if VERSION < v"0.4-"
+        push!(modcode,
+            quote
+                using Compat
+            end)
+    end
     push!(modcode,
         quote
             using PyCall
