@@ -11,7 +11,7 @@ type ROSPackage
     name::ASCIIString
     msg::ROSModule
     srv::ROSModule
-    function ROSPackage(pkgname::String)
+    function ROSPackage(pkgname::ASCIIString)
         pkg = new(pkgname)
         pkg.msg = ROSMsgModule(pkg)
         pkg.srv = ROSSrvModule(pkg)
@@ -110,7 +110,7 @@ function _pkgtype_import(input::Expr)
     return ps,msb,ts
 end
 #Import a set of types from a single package
-function _usepkg(package::String, ismsg::Bool, names::String...)
+function _usepkg(package::ASCIIString, ismsg::Bool, names::ASCIIString...)
     global _rospy_imports
     if ! haskey(_rospy_imports, package)
         @debug("Creating new package: ",package,".", ismsg ? "msg" : "srv") 
@@ -148,7 +148,7 @@ cleartypes() = error("cleartypes() renamed to rostypereset()")
 
 #Populate the module with a new message type. Import and add dependencies first
 #so they will appear first in the generated code.
-function addtype!(mod::ROSMsgModule, typ::String)
+function addtype!(mod::ROSMsgModule, typ::ASCIIString)
     global _rospy_objects
     if !(typ in mod.members)
         @debug("Message type import: ", _fullname(mod), ".", typ)
@@ -164,7 +164,7 @@ end
 
 #Populate the module with a new service type. Import and add dependencies
 #first.
-function addtype!(mod::ROSSrvModule, typ::String)
+function addtype!(mod::ROSSrvModule, typ::ASCIIString)
     global _rospy_objects
     if !(typ in mod.members)
         @debug("Service type import: ", _fullname(mod), ".", typ)
@@ -190,7 +190,7 @@ function addtype!(mod::ROSSrvModule, typ::String)
 end
 
 #Return the python module and python object for a particular type
-function _pyvars(modname::String, typ::String)
+function _pyvars(modname::ASCIIString, typ::ASCIIString)
     pymod = _import_rospy_pkg(modname)
     pyobj =
         try pymod[typ]
@@ -234,7 +234,7 @@ function _importdeps!(mod::ROSModule, deps::Vector)
 end
 
 #Bring in the python modules as needed
-function _import_rospy_pkg(package::String)
+function _import_rospy_pkg(package::ASCIIString)
     global _rospy_modules
     if ! haskey(_rospy_modules, package)
         @debug("Importing python package: ", package)
@@ -352,7 +352,7 @@ function _exportexpr(mod::ROSSrvModule)
 end
 
 #All the generated code for a generated message type
-function buildtype(mod::ROSMsgModule, typename::String)
+function buildtype(mod::ROSMsgModule, typename::ASCIIString)
     global _rospy_objects
     fulltypestr = _rostypestr(mod, typename)
     pyobj = _rospy_objects[fulltypestr]
@@ -370,7 +370,7 @@ end
 
 #All the generated code for a generated service type
 #Will create 3 different composite types.
-function buildtype(mod::ROSSrvModule, typename::String)
+function buildtype(mod::ROSSrvModule, typename::ASCIIString)
     global _rospy_objects
 
     req_typestr = _rostypestr(mod, string(typename,"Request"))
@@ -407,7 +407,7 @@ end
 # (2) Default outer constructer with no arguments
 # (3) convert(PyObject, ...)
 # (4) convert(..., o::PyObject)
-function typecode(rosname::String, super::Symbol, members::Vector)
+function typecode(rosname::ASCIIString, super::Symbol, members::Vector)
     tname = _splittypestr(rosname)[2]
     @debug("Type: ", tname)
     tsym = symbol(tname)
@@ -522,11 +522,11 @@ end
 
 #Build a String => Iterable{String} object from the individual package
 #dependencies.
-function _collectdeps{S<:String}(pkgs::Dict{S, ROSPackage})
-    deps = Dict{ASCIIString, Set{ASCIIString}}()
+function _collectdeps{S<:AbstractString}(pkgs::Dict{S, ROSPackage})
+    deps = Dict{S, Set{S}}()
     for pname in keys(pkgs)
         if ! haskey(deps, pname)
-            deps[pname] = Set{ASCIIString}()
+            deps[pname] = Set{S}()
         end
         union!(deps[pname], pkgs[pname].msg.deps)
         union!(deps[pname], pkgs[pname].srv.deps)
@@ -557,23 +557,23 @@ function _order(d::Dict)
     tlist
 end
 
-_rostypestr(mod::ROSModule, name::String) = string(_name(mod),"/",name)
-function _splittypestr(typestr::String)
+_rostypestr(mod::ROSModule, name::ASCIIString) = string(_name(mod),"/",name)
+function _splittypestr(typestr::ASCIIString)
     if ! _isrostype(typestr)
         error(string("Invalid message type '$typestr', ",
                      "use 'package_name/type_name'"))
     end
-    rospkg, typ = split(typestr, '/')
+    rospkg, typ = map(ascii, split(typestr, '/'))
     rospkg, typ
 end
 #Valid ROS type string is all word chars split by a single forward slash, with
 #optional square brackets for array types
-_isrostype(s::String) = ismatch(r"^\w+/\w+(?:\[\d*\])?$", s)
+_isrostype(s::ASCIIString) = ismatch(r"^\w+/\w+(?:\[\d*\])?$", s)
 
 #Sanitize a string by checking for and removing brackets if they are present
 #Return the sanitized type and the number inside the brackets if it is a fixed
 #size type. Returns 0 if variable size (no number), -1 if no brackets
-function _check_array_type(typ::String)
+function _check_array_type(typ::ASCIIString)
     arraylen = -1
     m = match(r"^([\w/]+)\[(\d*)\]$", typ)
     if m != nothing
@@ -581,12 +581,12 @@ function _check_array_type(typ::String)
         if isempty(m.captures[2])
             arraylen = 0
         else
-            arraylen = int(m.captures[2])
+            arraylen = parse(Int, m.captures[2])
         end
     else
         btype = typ
     end
-    btype, arraylen
+    ascii(btype), arraylen
 end
 
 #Get the rospy PyObject corresponding to a generated type
@@ -607,7 +607,7 @@ end
 
 #Check if the type name conflicts with a Julia builtin. Currently this is only
 #some of the messages from the std_msgs.msg package
-_nameconflicts(typename::String) = isdefined(Base, symbol(typename))
+_nameconflicts(typename::ASCIIString) = isdefined(Base, symbol(typename))
 
 #Get a default value for any builtin ROS type
 _typedefault{T<:Real}(::Type{T}) = zero(T)

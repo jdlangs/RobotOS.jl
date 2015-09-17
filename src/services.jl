@@ -9,23 +9,23 @@ end
 
 type ServiceProxy{SrvType <: ServiceDefinition}
     o::PyObject
-    
-    function ServiceProxy(name::String; kwargs...)
+
+    function ServiceProxy(name::AbstractString; kwargs...)
         @debug("Creating <$SrvType> service proxy for '$name'")
         rospycls = _get_rospy_class(SrvType)
-        new(__rospy__[:ServiceProxy](name, rospycls; kwargs...))
+        new(__rospy__[:ServiceProxy](ascii(name), rospycls; kwargs...))
     end
 end
 function ServiceProxy{SrvType<:ServiceDefinition}(
-    name::String, 
-    srv::Type{SrvType}; 
+    name::AbstractString,
+    srv::Type{SrvType};
     kwargs...
 )
-    ServiceProxy{SrvType}(name; kwargs...)
+    ServiceProxy{SrvType}(ascii(name); kwargs...)
 end
 
 function call{SrvType <: ServiceDefinition}(
-    srv::ServiceProxy{SrvType}, 
+    srv::ServiceProxy{SrvType},
     req::SrvT
 )
     if ! isa(req, _srv_reqtype(SrvType))
@@ -41,15 +41,15 @@ type Service{SrvType <: ServiceDefinition}
     o::PyObject
     jl_handler
 
-    function Service(name::String, handler; kwargs...)
+    function Service(name::AbstractString, handler; kwargs...)
         @debug("Providing <$SrvType> service at '$name'")
         rospycls = _get_rospy_class(SrvType)
         ReqType = _srv_reqtype(SrvType)
-        jl_handler(req::PyObject) =
+        jl_hndl(req::PyObject) =
             convert(PyObject, handler(convert(ReqType,req)))
         try
-            new(__rospy__[:Service](name, rospycls, jl_handler; kwargs...),
-                jl_handler
+            new(__rospy__[:Service](ascii(name), rospycls, jl_hndl; kwargs...),
+                jl_hndl
             )
         catch err
             if isa(err, PyCall.PyError)
@@ -61,17 +61,17 @@ type Service{SrvType <: ServiceDefinition}
     end
 end
 function Service{SrvType<:ServiceDefinition}(
-    name::String,
+    name::AbstractString,
     srv::Type{SrvType},
     handler;
     kwargs...
 )
-    Service{SrvType}(name, handler; kwargs...)
+    Service{SrvType}(ascii(name), handler; kwargs...)
 end
 
-function wait_for_service(service::String; kwargs...)
+function wait_for_service(service::AbstractString; kwargs...)
     try
-        __rospy__[:wait_for_service](service; kwargs...)
+        __rospy__[:wait_for_service](ascii(service); kwargs...)
     catch ex
         error("Timeout exceeded waiting for service '$service'")
     end
