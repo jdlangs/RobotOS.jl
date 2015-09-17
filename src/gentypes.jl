@@ -44,17 +44,17 @@ const _ros_builtin_types = @compat Dict{ASCIIString, Symbol}(
     "int16"   => :Int16,
     "int32"   => :Int32,
     "int64"   => :Int64,
-    "uint8"   => :Uint8,
-    "uint16"  => :Uint16,
-    "uint32"  => :Uint32,
-    "uint64"  => :Uint64,
+    "uint8"   => :UInt8,
+    "uint16"  => :UInt16,
+    "uint32"  => :UInt32,
+    "uint64"  => :UInt64,
     "float32" => :Float32,
     "float64" => :Float64,
     "string"  => :ASCIIString,
     "time"    => :Time,
     "duration"=> :Duration,
     #Deprecated but supported
-    "char"    => :Uint8,
+    "char"    => :UInt8,
     "byte"    => :Int8,
     )
 
@@ -498,7 +498,7 @@ function _addtypemember!(exprs, namestr, typestr)
 
         #uint8[] is string in rospy and PyCall's conversion to bytearray is
         #rejected by ROS
-        if j_typ == :Uint8
+        if j_typ == :UInt8
             pyconexpr = :(py[$namestr] =
                 pycall(pybuiltin("str"), PyObject, PyObject(o.$namesym))
             )
