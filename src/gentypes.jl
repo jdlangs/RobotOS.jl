@@ -113,7 +113,7 @@ end
 function _usepkg(package::ASCIIString, ismsg::Bool, names::ASCIIString...)
     global _rospy_imports
     if ! haskey(_rospy_imports, package)
-        @debug("Creating new package: ",package,".", ismsg ? "msg" : "srv") 
+        @debug("Creating new package: ",package,".", ismsg ? "msg" : "srv")
         _rospy_imports[package] = ROSPackage(package)
     end
     rospypkg = _rospy_imports[package]
@@ -339,9 +339,7 @@ end
 function _exportexpr(mod::ROSMsgModule)
     exportexpr = Expr(:export)
     for m in mod.members
-        push!(exportexpr.args, _nameconflicts(m) ?
-            symbol(string(m,"Msg")) :
-            symbol(m))
+        push!(exportexpr.args, symbol(_jl_safe_name(m,"Msg")))
     end
     exportexpr
 end
@@ -366,11 +364,6 @@ function buildtype(mod::ROSMsgModule, typename::ASCIIString)
     memtypes = pyobj[:_slot_types]
     members = collect(zip(memnames, memtypes))
 
-    #Some ROS message names conflict with Julia built-in types
-    #Append 'Msg' to the type name to resolve
-    if _nameconflicts(typename)
-        fulltypestr = fulltypestr * "Msg"
-    end
     typecode(fulltypestr, :MsgT, members)
 end
 
@@ -408,7 +401,7 @@ function buildtype(mod::ROSSrvModule, typename::ASCIIString)
 end
 
 #Create the core generated expressions for a native Julia message type that has
-#data fields and interchanges with a python counterpart: 
+#data fields and interchanges with a python counterpart:
 # (1) the 'type ... end' block
 # (2) Default outer constructer with no arguments
 # (3) convert(PyObject, ...)
@@ -416,21 +409,27 @@ end
 function typecode(rosname::ASCIIString, super::Symbol, members::Vector)
     tname = _splittypestr(rosname)[2]
     @debug("Type: ", tname)
-    tsym = symbol(tname)
+
+    #generated code should not conflict with julia built-ins
+    #some messages need renaming
+    suffix = if super == :MsgT; "Msg"
+         elseif super == :SrvT; "Srv"
+         else; "ROS" end
+    jlsym = symbol(_jl_safe_name(tname,suffix))
 
     exprs = Expr[]
     #First the empty expressions
     #(1) Type declaration
     push!(exprs, :(
-        type $tsym <: $super
+        type $jlsym <: $super
             #Generated code here
         end
     ))
     #(2) Default constructor, but only if the type has members
     if length(members) > 0
         push!(exprs, :(
-            function $tsym()
-                $tsym() #Generated code inside parens here
+            function $jlsym()
+                $jlsym() #Generated code inside parens here
             end
         ))
     else
@@ -438,7 +437,7 @@ function typecode(rosname::ASCIIString, super::Symbol, members::Vector)
     end
     #(3) Convert to PyObject
     push!(exprs, :(
-        function convert(::Type{PyObject}, o::$tsym)
+        function convert(::Type{PyObject}, o::$jlsym)
             py = pycall(RobotOS._rospy_objects[$rosname], PyObject)
             #Generated code here
             py
@@ -446,11 +445,11 @@ function typecode(rosname::ASCIIString, super::Symbol, members::Vector)
     ))
     #(4) Convert from PyObject
     push!(exprs, :(
-        function convert(jlt::Type{$tsym}, o::PyObject)
+        function convert(jlt::Type{$jlsym}, o::PyObject)
             if convert(ASCIIString, o["_type"]) != _typerepr(jlt)
                 throw(InexactError())
             end
-            jl = $tsym()
+            jl = $jlsym()
             #Generated code here
             jl
         end
@@ -462,7 +461,7 @@ function typecode(rosname::ASCIIString, super::Symbol, members::Vector)
         _addtypemember!(exprs, namestr, typ)
         @debug_subindent
     end
-    push!(exprs, :(_typerepr(::Type{$tsym}) = $rosname))
+    push!(exprs, :(_typerepr(::Type{$jlsym}) = $rosname))
     exprs
 end
 
@@ -610,6 +609,10 @@ function _get_rospy_class(typ::DataType)
         end
     rospycls
 end
+
+_jl_safe_name(name::AbstractString, suffix) = _nameconflicts(name) ?
+    string(name,suffix) :
+    name
 
 #Check if the type name conflicts with a Julia builtin. Currently this is only
 #some of the messages from the std_msgs.msg package

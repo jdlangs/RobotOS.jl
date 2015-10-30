@@ -69,6 +69,8 @@ path2 = convert(nav_msgs.msg.Path, pypath)
 emptymsg = std_msgs.msg.Empty()
 @test length(fieldnames(emptymsg)) == 0
 
-#Issue #7 - Renaming conflicting message types
+#Issue #7/8 - Renaming conflicting message types
 @test isdefined(std_msgs.msg, :Float64Msg)
 @test isdefined(std_msgs.msg, :StringMsg)
+@test Publisher{std_msgs.msg.Float64Msg}("x", queue_size=10) != nothing
+@test Subscriber{std_msgs.msg.Float64Msg}("x", x->x, queue_size=10) != nothing
