@@ -621,11 +621,11 @@ _typedefault(::Type{Duration}) = Duration(0,0)
 
 #Default method to get the "pkg/type" string from a generated DataType.
 #Extended by the generated modules.
-function _typerepr end
+_typerepr{T}(::Type{T}) = error("Not a ROS type")
 
-#Default methods to get the request/response datatypes for a generated service
-function _srv_reqtype end
-function _srv_resptype end
+#Default method to get the request/response datatypes for a generated service
+_srv_reqtype{T}( ::Type{T}) = error("Not a ROS Service type")
+_srv_resptype{T}(::Type{T}) = error("Not a ROS Service type")
 
 #Accessors for the package name
 _name(p::ROSPackage) = p.name
