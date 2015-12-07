@@ -132,7 +132,6 @@ function rostypegen()
         buildpackage(_rospy_imports[pkg])
     end
 end
-gentypes() = error("gentypes() renamed to rostypegen()")
 
 #Reset type generation process to start over with @rosimport. Does not remove
 #already generated modules! They will be replaced when rostypegen is called
@@ -144,7 +143,6 @@ function rostypereset()
     empty!(_rospy_objects)
     nothing
 end
-cleartypes() = error("cleartypes() renamed to rostypereset()")
 
 #Populate the module with a new message type. Import and add dependencies first
 #so they will appear first in the generated code.
@@ -195,11 +193,8 @@ function _pyvars(modname::ASCIIString, typ::ASCIIString)
     pyobj =
         try pymod[typ]
         catch ex
-            if isa(ex, KeyError)
-                throw(KeyError("'$typ' in package '$modname'"))
-            else
-                rethrow(ex)
-            end
+            isa(ex, KeyError) || rethrow(ex)
+            throw(KeyError("'$typ' in package '$modname'"))
         end
     pymod, pyobj
 end
@@ -626,11 +621,11 @@ _typedefault(::Type{Duration}) = Duration(0,0)
 
 #Default method to get the "pkg/type" string from a generated DataType.
 #Extended by the generated modules.
-_typerepr{T}(::Type{T}) = error("Not a ROS type")
+function _typerepr end
 
-#Default method to get the request/response datatypes for a generated service
-_srv_reqtype{T}( ::Type{T}) = error("Not a ROS Service type")
-_srv_resptype{T}(::Type{T}) = error("Not a ROS Service type")
+#Default methods to get the request/response datatypes for a generated service
+function _srv_reqtype end
+function _srv_resptype end
 
 #Accessors for the package name
 _name(p::ROSPackage) = p.name
