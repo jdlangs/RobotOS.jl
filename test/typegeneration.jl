@@ -9,7 +9,7 @@ using Compat
 @rosimport std_msgs.msg: Float64, String
 
 @test_throws ErrorException @rosimport fake_msgs.msg.FakeMsg
-@test_throws KeyError @rosimport std_msgs.msg.FakeMsg
+@test_throws ErrorException @rosimport std_msgs.msg.FakeMsg
 @test_throws ErrorException @rosimport nav_msgs.srv.GetPlanRequest
 rostypegen()
 
