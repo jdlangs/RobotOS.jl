@@ -25,8 +25,11 @@ feel free to submit either an issue or pull request through github if you want
 to fix something or suggest a needed improvment, even if it's just to add an
 extra sentence in this README.
 
-Once the package gets tested somewhat in the wild, I'll plan to move it
-directly to version 1.0.
+#### Testing
+
+Currently, `Pkg.test("RobotOS")` requires some bootstrapping to work properly.
+Before running Julia, make sure a ROS master is running and start the helper
+node by running the `test/echonode.py` file.
 
 ## Usage: Type Generation
 

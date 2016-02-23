@@ -63,7 +63,7 @@ abstract MsgT
 abstract SrvT
 abstract ServiceDefinition
 
-#Rearranges the expression into a RobotOS._usepkg call. Input comes in as a
+#Rearranges the expression into a RobotOS._rosimport call. Input comes in as a
 #single package qualified expression, or as a tuple expression where the first
 #element is the same as the single expression case. Most of the code is just
 #error checking that the input takes that form.
@@ -79,10 +79,10 @@ macro rosimport(input)
             @assert isa(t, Symbol) "Type name ($(string(t))) not a symbol"
             push!(types, string(t))
         end
-        return :(_usepkg($pkg, $ismsg, $types...))
+        return :(_rosimport($pkg, $ismsg, $types...))
     else
         pkg, ismsg, typ = _pkgtype_import(input)
-        return :(_usepkg($pkg, $ismsg, $typ))
+        return :(_rosimport($pkg, $ismsg, $typ))
     end
 end
 
@@ -110,10 +110,10 @@ function _pkgtype_import(input::Expr)
     return ps,msb,ts
 end
 #Import a set of types from a single package
-function _usepkg(package::ASCIIString, ismsg::Bool, names::ASCIIString...)
+function _rosimport(package::ASCIIString, ismsg::Bool, names::ASCIIString...)
     global _rospy_imports
     if ! haskey(_rospy_imports, package)
-        @debug("Creating new package: ",package,".", ismsg ? "msg" : "srv")
+        @debug("Importing new package: ",package,".", ismsg ? "msg" : "srv")
         _rospy_imports[package] = ROSPackage(package)
     end
     rospypkg = _rospy_imports[package]
@@ -150,6 +150,10 @@ function addtype!(mod::ROSMsgModule, typ::ASCIIString)
     global _rospy_objects
     if !(typ in mod.members)
         @debug("Message type import: ", _fullname(mod), ".", typ)
+        if _nameconflicts(typ)
+            warn("Message type '$typ' conflicts with Julia builtin, ",
+                 "will be imported as '$(_jl_safe_name(typ,"Msg"))'")
+        end
         pymod, pyobj = _pyvars(_fullname(mod), typ)
 
         deptypes = pyobj[:_slot_types]
@@ -194,7 +198,8 @@ function _pyvars(modname::ASCIIString, typ::ASCIIString)
         try pymod[typ]
         catch ex
             isa(ex, KeyError) || rethrow(ex)
-            throw(KeyError("'$typ' in package '$modname'"))
+            error("Message type '$typ' not found in ROS package '$modname', ",
+                  "check the corresponding @rosimport call")
         end
     pymod, pyobj
 end
