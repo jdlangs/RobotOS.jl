@@ -294,7 +294,7 @@ function modulecode(mod::ROSModule)
     push!(modcode,
         quote
             using PyCall
-            import Base.convert
+            import Base: convert, getindex
             import RobotOS
             import RobotOS.Time
             import RobotOS.Duration
@@ -406,6 +406,7 @@ end
 # (2) Default outer constructer with no arguments
 # (3) convert(PyObject, ...)
 # (4) convert(..., o::PyObject)
+# (5) getindex for accessing member constants
 function typecode(rosname::ASCIIString, super::Symbol, members::Vector)
     tname = _splittypestr(rosname)[2]
     @debug("Type: ", tname)
@@ -453,6 +454,10 @@ function typecode(rosname::ASCIIString, super::Symbol, members::Vector)
             #Generated code here
             jl
         end
+    ))
+    #(5) Accessing member variables through getindex
+    push!(exprs, :(
+        getindex(::Type{$jlsym}, s::Symbol) = RobotOS._rospy_objects[$rosname][s]
     ))
 
     #Now add the meat to the empty expressions above
