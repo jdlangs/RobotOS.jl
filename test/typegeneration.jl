@@ -3,6 +3,7 @@ using PyCall
 using Compat
 
 @rosimport geometry_msgs.msg: PoseStamped, Vector3
+@rosimport visualization_msgs.msg: Marker
 @rosimport std_srvs.srv.Empty
 @rosimport nav_msgs.srv.GetPlan
 @rosimport std_msgs.msg: Empty
@@ -52,6 +53,9 @@ pose2 = convert(geometry_msgs.msg.PoseStamped, pypose)
 @test pose2.pose.position.y == 2.
 @test pose2.pose.position.z == 3.
 @test_throws InexactError convert(geometry_msgs.msg.Pose, pypose)
+
+#access message enum
+@test visualization_msgs.msg.Marker[:CUBE] == 1
 
 #Proper array handling
 path = nav_msgs.msg.Path()
