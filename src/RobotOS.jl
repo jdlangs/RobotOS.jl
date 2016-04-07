@@ -2,13 +2,17 @@ module RobotOS
 
 using PyCall
 
+#Empty imported modules for valid precompilation
+const __sys__ = PyCall.PyNULL()
+const __rospy__ = PyCall.PyNULL()
+
 function __init__()
     #Put julia's ARGS into python's so remappings will work
-    global const __sys__ = pyimport("sys")
+    copy!(__sys__, pyimport("sys"))
     __sys__["argv"] = ARGS
 
-    global const __rospy__ = try
-        pyimport("rospy")
+    try
+        copy!(__rospy__, pyimport("rospy"))
     catch ex
         if (isa(ex, PyCall.PyError) &&
             pycall(pybuiltin("str"), PyAny, ex.val) == "No module named rospy")
