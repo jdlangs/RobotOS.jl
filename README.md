@@ -139,14 +139,13 @@ example:
 ROS services are fully supported, including automatic request and response type
 generation. For the `@rosimport` call, use the plain service type name. After
 `rostypegen()`, the generated `.srv` submodule will contain 3 types: the plain
-type, a request type, and a response type. For example `GetPlan`,
-`GetPlanRequest`, and `GetPlanResponse`. To provide the service to other nodes,
-you would create a `Service{GetPlan}` object. To call it, a
-`ServiceProxy{GetPlan}` object. The syntax exactly matches rospy to construct
-and use these objects. The only exception is in Julia v0.3, where the `call`
-method is not overloaded for objects. In that case, you must call the
-`ServiceProxy` via `call(myproxy, myreq)` instead of the rospy method of
-`myproxy(myreq)` which works in later versions of Julia.
+type, a request type, and a response type. For example `@rosimport
+nav_msgs.srv.GetPlan` will create `GetPlan`, `GetPlanRequest`, and
+`GetPlanResponse`. To provide the service to other nodes, you would create a
+`Service{GetPlan}` object. To call it, a `ServiceProxy{GetPlan}` object. The
+syntax exactly matches rospy to construct and use these objects. For example,
+if `myproxy` is a `ServiceProxy` object, it can be called with
+`myproxy(my_request)`.
 
 ### Parameter Server
 
@@ -154,7 +153,9 @@ method is not overloaded for objects. In that case, you must call the
 in the `RobotOS` module with the same syntax as in rospy.
 
 ### Message Constants
-Message constants may be accessed using `getindex` syntax. For example for [visualization_msgs/Marker.msg](http://docs.ros.org/api/visualization_msgs/html/msg/Marker.html) we have:
+Message constants may be accessed using `getindex` syntax. For example for
+[visualization_msgs/Marker.msg](http://docs.ros.org/api/visualization_msgs/html/msg/Marker.html)
+we have:
 
     import visualization_msgs.msg: Marker
     Marker[:SPHERE] == getindex(Marker, :SPHERE) == 2   # true

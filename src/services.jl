@@ -1,11 +1,7 @@
 #API for calling/creating services. Syntax is practically identical to rospy.
 export Service, ServiceProxy, wait_for_service
 
-if VERSION < v"0.4-"
-    export call
-else
-    import Base.call
-end
+using Compat
 
 type ServiceProxy{SrvType <: ServiceDefinition}
     o::PyObject
@@ -24,8 +20,7 @@ function ServiceProxy{SrvType<:ServiceDefinition}(
     ServiceProxy{SrvType}(ascii(name); kwargs...)
 end
 
-function call{SrvType <: ServiceDefinition}(
-    srv::ServiceProxy{SrvType},
+@compat function (srv::ServiceProxy{SrvType}){SrvType <: ServiceDefinition}(
     req::SrvT
 )
     if ! isa(req, _srv_reqtype(SrvType))

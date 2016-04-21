@@ -1,5 +1,4 @@
 #Generate Julia composite types for ROS messages
-using Compat
 
 export @rosimport, rostypegen, rostypereset, gentypes, cleartypes
 
@@ -38,7 +37,7 @@ const _rospy_imports = Dict{ASCIIString,ROSPackage}()
 const _rospy_objects = Dict{ASCIIString,PyObject}()
 const _rospy_modules = Dict{ASCIIString,PyObject}()
 
-const _ros_builtin_types = @compat Dict{ASCIIString, Symbol}(
+const _ros_builtin_types = Dict{ASCIIString, Symbol}(
     "bool"    => :Bool,
     "int8"    => :Int8,
     "int16"   => :Int16,

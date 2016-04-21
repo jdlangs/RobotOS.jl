@@ -31,7 +31,7 @@ const srvlisten = Service("getplan", GetPlan, srv_cb)
 println("Waiting for 'callme' service...")
 wait_for_service("callme")
 println("Calling service now")
-call(srvcall, EmptyRequest())
+srvcall(EmptyRequest())
 
 #Wait for call from echo
 println("Waiting for service call from echo..")
@@ -52,4 +52,4 @@ end
 
 #Test error handling
 @test_throws ErrorException wait_for_service("fake_srv", timeout=1.0)
-@test_throws ArgumentError call(srvcall, EmptyResponse())
+@test_throws ArgumentError srvcall(EmptyResponse())
