@@ -225,3 +225,4 @@ republishes them as Points.
 - `0.1` : Initial release
 - `0.2` : Changed type gen API and moved generated modules to Main
 - `0.3` : Added service type generation and API
+- `0.4` : Julia v0.4+ support only
