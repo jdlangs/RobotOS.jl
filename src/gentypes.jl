@@ -1,5 +1,8 @@
 #Generate Julia composite types for ROS messages
 
+using Compat
+import Compat: String, Symbol
+
 export @rosimport, rostypegen, rostypereset, gentypes, cleartypes
 
 #Type definitions
@@ -7,10 +10,10 @@ export @rosimport, rostypegen, rostypereset, gentypes, cleartypes
 #keep code generation orderly.
 abstract ROSModule
 type ROSPackage
-    name::ASCIIString
+    name::String
     msg::ROSModule
     srv::ROSModule
-    function ROSPackage(pkgname::ASCIIString)
+    function ROSPackage(pkgname::String)
         pkg = new(pkgname)
         pkg.msg = ROSMsgModule(pkg)
         pkg.srv = ROSSrvModule(pkg)
@@ -19,25 +22,25 @@ type ROSPackage
 end
 type ROSMsgModule <: ROSModule
     pkg::ROSPackage
-    members::Vector{ASCIIString}
-    deps::Set{ASCIIString}
-    ROSMsgModule(pkg) = new(pkg, ASCIIString[], Set{ASCIIString}())
+    members::Vector{String}
+    deps::Set{String}
+    ROSMsgModule(pkg) = new(pkg, String[], Set{String}())
 end
 type ROSSrvModule <: ROSModule
     pkg::ROSPackage
-    members::Vector{ASCIIString}
-    deps::Set{ASCIIString}
-    ROSSrvModule(pkg) = new(pkg, ASCIIString[], Set{ASCIIString}())
+    members::Vector{String}
+    deps::Set{String}
+    ROSSrvModule(pkg) = new(pkg, String[], Set{String}())
 end
 
 #These two global objects maintain the hierarchy from multiple calls to
 #`@rosimport` and keep the link to the Python objects whenever communication
 #goes between RobotOS and rospy.
-const _rospy_imports = Dict{ASCIIString,ROSPackage}()
-const _rospy_objects = Dict{ASCIIString,PyObject}()
-const _rospy_modules = Dict{ASCIIString,PyObject}()
+const _rospy_imports = Dict{String,ROSPackage}()
+const _rospy_objects = Dict{String,PyObject}()
+const _rospy_modules = Dict{String,PyObject}()
 
-const _ros_builtin_types = Dict{ASCIIString, Symbol}(
+const _ros_builtin_types = Dict{String, Symbol}(
     "bool"    => :Bool,
     "int8"    => :Int8,
     "int16"   => :Int16,
@@ -49,7 +52,7 @@ const _ros_builtin_types = Dict{ASCIIString, Symbol}(
     "uint64"  => :UInt64,
     "float32" => :Float32,
     "float64" => :Float64,
-    "string"  => :ASCIIString,
+    "string"  => :String,
     "time"    => :Time,
     "duration"=> :Duration,
     #Deprecated but supported
@@ -71,7 +74,7 @@ macro rosimport(input)
     if input.head == :tuple
         @assert isa(input.args[1], Expr) "Improper @rosimport input"
         @assert input.args[1].head == :(:) "First argument needs ':' following"
-        types = ASCIIString[]
+        types = String[]
         pkg, ismsg, typ = _pkgtype_import(input.args[1])
         push!(types, typ)
         for t in input.args[2:end]
@@ -109,7 +112,7 @@ function _pkgtype_import(input::Expr)
     return ps,msb,ts
 end
 #Import a set of types from a single package
-function _rosimport(package::ASCIIString, ismsg::Bool, names::ASCIIString...)
+function _rosimport(package::String, ismsg::Bool, names::String...)
     global _rospy_imports
     if ! haskey(_rospy_imports, package)
         @debug("Importing new package: ",package,".", ismsg ? "msg" : "srv")
@@ -145,7 +148,7 @@ end
 
 #Populate the module with a new message type. Import and add dependencies first
 #so they will appear first in the generated code.
-function addtype!(mod::ROSMsgModule, typ::ASCIIString)
+function addtype!(mod::ROSMsgModule, typ::String)
     global _rospy_objects
     if !(typ in mod.members)
         @debug("Message type import: ", _fullname(mod), ".", typ)
@@ -165,7 +168,7 @@ end
 
 #Populate the module with a new service type. Import and add dependencies
 #first.
-function addtype!(mod::ROSSrvModule, typ::ASCIIString)
+function addtype!(mod::ROSSrvModule, typ::String)
     global _rospy_objects
     if !(typ in mod.members)
         @debug("Service type import: ", _fullname(mod), ".", typ)
@@ -191,7 +194,7 @@ function addtype!(mod::ROSSrvModule, typ::ASCIIString)
 end
 
 #Return the python module and python object for a particular type
-function _pyvars(modname::ASCIIString, typ::ASCIIString)
+function _pyvars(modname::String, typ::String)
     pymod = _import_rospy_pkg(modname)
     pyobj =
         try pymod[typ]
@@ -233,7 +236,7 @@ function _importdeps!(mod::ROSModule, deps::Vector)
 end
 
 #Bring in the python modules as needed
-function _import_rospy_pkg(package::ASCIIString)
+function _import_rospy_pkg(package::String)
     global _rospy_modules
     if ! haskey(_rospy_modules, package)
         @debug("Importing python package: ", package)
@@ -252,7 +255,7 @@ function buildpackage(pkg::ROSPackage)
     @debug("Building package: ", _name(pkg))
 
     #Create the top-level module for the package in Main
-    pkgsym = symbol(_name(pkg))
+    pkgsym = Symbol(_name(pkg))
     pkgcode = Expr(:toplevel, :(module ($pkgsym) end))
     Main.eval(pkgcode)
     pkgmod = Main.eval(pkgsym)
@@ -284,14 +287,10 @@ function modulecode(mod::ROSModule)
     modcode = Expr[]
 
     #Common imports
-    if VERSION < v"0.4-"
-        push!(modcode,
-            quote
-                using Compat
-            end)
-    end
     push!(modcode,
         quote
+            using Compat
+            import Compat: String, Symbol
             using PyCall
             import Base: convert, getindex
             import RobotOS
@@ -320,7 +319,7 @@ end
 function _importexprs(mod::ROSMsgModule)
     imports = Expr[Expr(:import, :RobotOS, :MsgT)]
     othermods = filter(d -> d != _name(mod), mod.deps)
-    append!(imports, [Expr(:using,symbol(m),:msg) for m in othermods])
+    append!(imports, [Expr(:using,Symbol(m),:msg) for m in othermods])
     imports
 end
 function _importexprs(mod::ROSSrvModule)
@@ -330,7 +329,7 @@ function _importexprs(mod::ROSSrvModule)
         Expr(:import, :RobotOS, :_srv_reqtype),
         Expr(:import, :RobotOS, :_srv_resptype),
     ]
-    append!(imports, [Expr(:using,symbol(m),:msg) for m in mod.deps])
+    append!(imports, [Expr(:using,Symbol(m),:msg) for m in mod.deps])
     imports
 end
 
@@ -338,7 +337,7 @@ end
 function _exportexpr(mod::ROSMsgModule)
     exportexpr = Expr(:export)
     for m in mod.members
-        push!(exportexpr.args, symbol(_jl_safe_name(m,"Msg")))
+        push!(exportexpr.args, Symbol(_jl_safe_name(m,"Msg")))
     end
     exportexpr
 end
@@ -346,16 +345,16 @@ function _exportexpr(mod::ROSSrvModule)
     exportexpr = Expr(:export)
     for typ in mod.members
         push!(exportexpr.args,
-            symbol(typ),
-            symbol(string(typ,"Request")),
-            symbol(string(typ,"Response"))
+            Symbol(typ),
+            Symbol(string(typ,"Request")),
+            Symbol(string(typ,"Response"))
         )
     end
     exportexpr
 end
 
 #All the generated code for a generated message type
-function buildtype(mod::ROSMsgModule, typename::ASCIIString)
+function buildtype(mod::ROSMsgModule, typename::String)
     global _rospy_objects
     fulltypestr = _rostypestr(mod, typename)
     pyobj = _rospy_objects[fulltypestr]
@@ -368,7 +367,7 @@ end
 
 #All the generated code for a generated service type
 #Will create 3 different composite types.
-function buildtype(mod::ROSSrvModule, typename::ASCIIString)
+function buildtype(mod::ROSSrvModule, typename::String)
     global _rospy_objects
 
     req_typestr = _rostypestr(mod, string(typename,"Request"))
@@ -387,9 +386,9 @@ function buildtype(mod::ROSSrvModule, typename::ASCIIString)
     pyresp = :(RobotOS._rospy_objects[$resp_typestr])
     respexprs = typecode(resp_typestr, :SrvT, respmems)
 
-    defsym = symbol(typename)
-    reqsym = symbol(string(typename,"Request"))
-    respsym = symbol(string(typename,"Response"))
+    defsym = Symbol(typename)
+    reqsym = Symbol(string(typename,"Request"))
+    respsym = Symbol(string(typename,"Response"))
     srvexprs = Expr[
         :(immutable $defsym <: ServiceDefinition end),
         :(_typerepr(::Type{$defsym}) = $(_rostypestr(mod,typename))),
@@ -406,7 +405,7 @@ end
 # (3) convert(PyObject, ...)
 # (4) convert(..., o::PyObject)
 # (5) getindex for accessing member constants
-function typecode(rosname::ASCIIString, super::Symbol, members::Vector)
+function typecode(rosname::String, super::Symbol, members::Vector)
     tname = _splittypestr(rosname)[2]
     @debug("Type: ", tname)
 
@@ -415,7 +414,7 @@ function typecode(rosname::ASCIIString, super::Symbol, members::Vector)
     suffix = if super == :MsgT; "Msg"
          elseif super == :SrvT; "Srv"
          else; "ROS" end
-    jlsym = symbol(_jl_safe_name(tname,suffix))
+    jlsym = Symbol(_jl_safe_name(tname,suffix))
 
     exprs = Expr[]
     #First the empty expressions
@@ -446,7 +445,7 @@ function typecode(rosname::ASCIIString, super::Symbol, members::Vector)
     #(4) Convert from PyObject
     push!(exprs, :(
         function convert(jlt::Type{$jlsym}, o::PyObject)
-            if convert(ASCIIString, o["_type"]) != _typerepr(jlt)
+            if convert(String, o["_type"]) != _typerepr(jlt)
                 throw(InexactError())
             end
             jl = $jlsym()
@@ -487,7 +486,7 @@ function _addtypemember!(exprs, namestr, typestr)
 
     typestr, arraylen = _check_array_type(typestr)
     if _isrostype(typestr)
-        j_typ = symbol(_splittypestr(typestr)[2])
+        j_typ = Symbol(_splittypestr(typestr)[2])
         #Default has to be deferred until the types exist
         j_def = Expr(:call, j_typ)
     else
@@ -499,7 +498,7 @@ function _addtypemember!(exprs, namestr, typestr)
         j_def = @eval _typedefault($j_typ)
     end
 
-    namesym = symbol(namestr)
+    namesym = Symbol(namestr)
     if arraylen >= 0
         memexpr = :($namesym::Array{$j_typ,1})
         defexpr = :([$j_def for i = 1:$arraylen])
@@ -559,15 +558,15 @@ function _order(d::Dict)
             end
         end
     end
-    tlist = ASCIIString[]
+    tlist = String[]
     for t in keys(d)
         trecurse!(tlist, d, t)
     end
     tlist
 end
 
-_rostypestr(mod::ROSModule, name::ASCIIString) = string(_name(mod),"/",name)
-function _splittypestr(typestr::ASCIIString)
+_rostypestr(mod::ROSModule, name::String) = string(_name(mod),"/",name)
+function _splittypestr(typestr::String)
     if ! _isrostype(typestr)
         error(string("Invalid message type '$typestr', ",
                      "use 'package_name/type_name'"))
@@ -577,12 +576,12 @@ function _splittypestr(typestr::ASCIIString)
 end
 #Valid ROS type string is all word chars split by a single forward slash, with
 #optional square brackets for array types
-_isrostype(s::ASCIIString) = ismatch(r"^\w+/\w+(?:\[\d*\])?$", s)
+_isrostype(s::String) = ismatch(r"^\w+/\w+(?:\[\d*\])?$", s)
 
 #Sanitize a string by checking for and removing brackets if they are present
 #Return the sanitized type and the number inside the brackets if it is a fixed
 #size type. Returns 0 if variable size (no number), -1 if no brackets
-function _check_array_type(typ::ASCIIString)
+function _check_array_type(typ::String)
     arraylen = -1
     m = match(r"^([\w/]+)\[(\d*)\]$", typ)
     if m != nothing
@@ -620,11 +619,11 @@ _jl_safe_name(name::AbstractString, suffix) = _nameconflicts(name) ?
 
 #Check if the type name conflicts with a Julia builtin. Currently this is only
 #some of the messages from the std_msgs.msg package
-_nameconflicts(typename::ASCIIString) = isdefined(Base, symbol(typename))
+_nameconflicts(typename::String) = isdefined(Base, Symbol(typename))
 
 #Get a default value for any builtin ROS type
 _typedefault{T<:Real}(::Type{T}) = zero(T)
-_typedefault(::Type{ASCIIString}) = ""
+_typedefault(::Type{String}) = ""
 _typedefault(::Type{Time}) = Time(0,0)
 _typedefault(::Type{Duration}) = Duration(0,0)
 
