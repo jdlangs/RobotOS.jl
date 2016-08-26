@@ -3,11 +3,11 @@
 using std_srvs.srv
 using nav_msgs.srv
 
-const flag = Bool[false]
-const Nposes = 5
-empty!(msgs)
-
 #Set up services
+const srvcall = ServiceProxy("callme", SetBool)
+println("Waiting for 'callme' service...")
+wait_for_service("callme")
+
 function srv_cb(req::GetPlanRequest)
     println("GetPlan call received")
     @test_approx_eq(req.start.pose.position.x, 1.0)
@@ -24,14 +24,27 @@ function srv_cb(req::GetPlanRequest)
     return resp
 end
 
-const srvcall = ServiceProxy("callme", Empty)
+if VERSION >= v"0.5.0-dev+3692" #callbacks are broken
+
+warn("Not testing service provider!")
+
+println("Calling service...")
+srvcall(SetBoolRequest(false))
+rossleep(Duration(5.0))
+
+didcall = get_param("/received_service_call")
+@test didcall
+set_param("/received_service_call", false)
+
+else #callbacks not broken
+
+const flag = Bool[false]
+const Nposes = 5
+
 const srvlisten = Service("getplan", GetPlan, srv_cb)
 
-#Call echo's Empty service
-println("Waiting for 'callme' service...")
-wait_for_service("callme")
-println("Calling service now")
-srvcall(EmptyRequest())
+println("Calling service...")
+srvcall(SetBoolRequest(true))
 
 #Wait for call from echo
 println("Waiting for service call from echo..")
@@ -40,8 +53,8 @@ while ! (flag[1] || is_shutdown())
 end
 println("Response sent")
 
-#Listen for message replies caught by the geomety_msgs/PoseStamped subscriber
-#in pubsub.jl which populates the msgs global variable
+#Check the message replies caught by the geomety_msgs/PoseStamped subscriber in pubsub.jl which
+#populates the msgs global variable
 if flag[1]
     rossleep(Duration(2.0))
     @test length(msgs) == Nposes
@@ -49,7 +62,10 @@ if flag[1]
         @test_approx_eq(msgs[i].pose.position.z, i)
     end
 end
+empty!(msgs)
+
+end #version check
 
 #Test error handling
 @test_throws ErrorException wait_for_service("fake_srv", timeout=1.0)
-@test_throws ArgumentError srvcall(EmptyResponse())
+@test_throws ArgumentError srvcall(SetBoolResponse())

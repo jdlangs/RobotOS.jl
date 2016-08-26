@@ -4,7 +4,7 @@ using Compat
 
 @rosimport geometry_msgs.msg: PoseStamped, Vector3
 @rosimport visualization_msgs.msg: Marker
-@rosimport std_srvs.srv.Empty
+@rosimport std_srvs.srv: Empty, SetBool
 @rosimport nav_msgs.srv.GetPlan
 @rosimport std_msgs.msg: Empty
 @rosimport std_msgs.msg: Float64, String
@@ -35,8 +35,8 @@ posestamp = geometry_msgs.msg.PoseStamped()
 @test typeof(posestamp.pose.position) == geometry_msgs.msg.Point
 
 #service creation
-emptyreq = std_srvs.srv.EmptyRequest()
-emptyresp = std_srvs.srv.EmptyResponse()
+boolreq = std_srvs.srv.SetBoolRequest()
+boolresp = std_srvs.srv.SetBoolResponse(true, "message")
 planreq = nav_msgs.srv.GetPlanRequest()
 planresp = nav_msgs.srv.GetPlanResponse()
 @test typeof(planreq) == nav_msgs.srv.GetPlanRequest
@@ -77,4 +77,5 @@ emptymsg = std_msgs.msg.Empty()
 @test isdefined(std_msgs.msg, :Float64Msg)
 @test isdefined(std_msgs.msg, :StringMsg)
 @test Publisher{std_msgs.msg.Float64Msg}("x", queue_size=10) != nothing
-@test Subscriber{std_msgs.msg.Float64Msg}("x", x->x, queue_size=10) != nothing
+VERSION < v"0.5.0-dev+3692" &&
+    @test Subscriber{std_msgs.msg.Float64Msg}("x", x->x, queue_size=10) != nothing
