@@ -2,16 +2,18 @@ language: julia
 julia:
   - nightly
   - release
-
+sudo: required
+dist: trusty
 before_install:
-  - sudo apt-add-repository -y "deb http://packages.ros.org/ros/ubuntu precise main"
+  - sudo apt-add-repository -y "deb http://packages.ros.org/ros/ubuntu trusty main"
   - wget https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -O - | sudo apt-key add -
   - sudo apt-get update
-  - sudo apt-get -y install ros-hydro-ros-base ros-hydro-common-msgs
+  - sudo apt-get -y install ros-indigo-ros-base ros-indigo-common-msgs
   - sudo rosdep init
   - rosdep update
 before_script:
-  - source /opt/ros/hydro/setup.sh
+  - export PATH=/usr/bin:$PATH
+  - source /opt/ros/indigo/setup.sh
   - roscore &
   - sleep 5
   - python test/echonode.py &
