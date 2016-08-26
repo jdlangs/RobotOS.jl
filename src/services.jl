@@ -32,6 +32,17 @@ end
     resp
 end
 
+if VERSION >= v"0.5.0-dev+3692" #callbacks are broken
+
+type Service{T}
+end
+
+Service(args...) = error(
+"""Providing a service is currently broken on julia v0.5 and above. See
+https://github.com/jdlangs/RobotOS.jl/issues/15 for ongoing efforts to fix this.""")
+
+else #callbacks not broken
+
 type Service{SrvType <: ServiceDefinition}
     o::PyObject
     jl_handler
@@ -63,6 +74,8 @@ function Service{SrvType<:ServiceDefinition}(
 )
     Service{SrvType}(ascii(name), handler; kwargs...)
 end
+
+end #version check
 
 function wait_for_service(service::AbstractString; kwargs...)
     try
