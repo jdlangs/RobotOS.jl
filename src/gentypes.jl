@@ -3,7 +3,7 @@
 using Compat
 import Compat: String, Symbol
 
-export @rosimport, rostypegen, rostypereset, gentypes, cleartypes
+export @rosimport, rostypegen, rostypereset
 
 #Type definitions
 #Composite types for internal use. Keeps track of the imported types and helps
@@ -55,7 +55,7 @@ const _ros_builtin_types = Dict{String, Symbol}(
     "string"  => :String,
     "time"    => :Time,
     "duration"=> :Duration,
-    #Deprecated but supported
+    #Deprecated by ROS but supported here
     "char"    => :UInt8,
     "byte"    => :Int8,
     )
@@ -65,11 +65,23 @@ const _ros_builtin_types = Dict{String, Symbol}(
 @compat abstract type AbstractSrv end
 @compat abstract type AbstractService end
 
-#Rearranges the expression into a RobotOS._rosimport call. Input comes in as a
-#single package qualified expression, or as a tuple expression where the first
-#element is the same as the single expression case. Most of the code is just
-#error checking that the input takes that form.
+"""
+    @rosimport
+
+Import ROS message or service types into Julia. Call `rostypegen()` after all `@rosimport` calls.
+Package or type dependencies are also imported automatically as needed.
+
+Example usages:
+```julia
+  @rosimport geometry_msgs.msg.PoseStamped
+  @rosimport sensor_msgs.msg: Image, Imu
+  @rosimport nav_msgs.srv.GetPlan
+```
+"""
 macro rosimport(input)
+    #Rearranges the expression into a RobotOS._rosimport call. Input comes in as a single package
+    #qualified expression, or as a tuple expression where the first element is the same as the
+    #single expression case. Most of the code is just error checking that the input takes that form.
     @assert input.head in [:tuple, :(.), :(:)] "Improper @rosimport input"
     if input.head == :tuple
         @assert isa(input.args[1], Expr) "Improper @rosimport input"
@@ -124,8 +136,13 @@ function _rosimport(package::String, ismsg::Bool, names::String...)
     end
 end
 
-#Do the Julia type generation. This function is needed because we want to
-#create the modules in one go, rather than anytime @rosimport gets called
+"""
+    rostypegen()
+
+Initiate the Julia type generation process after importing some ROS types. Creates modules in `Main`
+with the same behavior as imported ROS modules in python. Should only be called once, after all
+`@rosimport` statements are done.
+"""
 function rostypegen()
     global _rospy_imports
     pkgdeps = _collectdeps(_rospy_imports)
@@ -135,9 +152,12 @@ function rostypegen()
     end
 end
 
-#Reset type generation process to start over with @rosimport. Does not remove
-#already generated modules! They will be replaced when rostypegen is called
-#again.
+"""
+    rostypereset()
+
+Clear out the previous `@rosimport`s, returning the type generation to its original state. Cannot do
+anything about already generated modules in `Main`.
+"""
 function rostypereset()
     global _rospy_imports
     global _rospy_objects
