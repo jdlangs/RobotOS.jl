@@ -32,7 +32,7 @@ end
     resp
 end
 
-if VERSION >= v"0.5.0-dev+3692" #callbacks are broken
+if _threads_enabled() #callbacks are broken
 
 type Service{T}
 end
@@ -75,7 +75,7 @@ function Service{SrvType<:ServiceDefinition}(
     Service{SrvType}(ascii(name), handler; kwargs...)
 end
 
-end #version check
+end #check
 
 function wait_for_service(service::AbstractString; kwargs...)
     try

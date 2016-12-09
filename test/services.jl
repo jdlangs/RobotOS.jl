@@ -24,7 +24,7 @@ function srv_cb(req::GetPlanRequest)
     return resp
 end
 
-if VERSION >= v"0.5.0-dev+3692" #callbacks are broken
+if RobotOS._threads_enabled() #callbacks are broken
 
 warn("Not testing service provider!")
 
@@ -64,7 +64,7 @@ if flag[1]
 end
 empty!(msgs)
 
-end #version check
+end #check
 
 #Test error handling
 @test_throws ErrorException wait_for_service("fake_srv", timeout=1.0)

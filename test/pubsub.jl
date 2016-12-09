@@ -36,7 +36,7 @@ function pose_cb(msg::PoseStamped, msgs::Vector{PoseStamped})
 end
 pose_cb(PoseStamped(), msgs) #warm up run
 
-if VERSION >= v"0.5.0-dev+3692" #callbacks are broken
+if RobotOS._threads_enabled() #callbacks are broken
 
 warn("Not testing subscriber!")
 
@@ -66,4 +66,4 @@ for i=1:Nmsgs
 end
 empty!(msgs)
 
-end #version check
+end #check

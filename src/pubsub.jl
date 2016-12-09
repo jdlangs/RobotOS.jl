@@ -17,7 +17,7 @@ function publish{MsgType<:MsgT}(p::Publisher{MsgType}, msg::MsgType)
     pycall(p.o["publish"], PyAny, convert(PyObject, msg))
 end
 
-if VERSION >= v"0.5.0-dev+3692" #callbacks are broken
+if _threads_enabled() #callbacks are broken
 
 type Subscriber{T}
 end
@@ -50,4 +50,4 @@ Subscriber{MsgType<:MsgT}(
     kwargs...
 ) = Subscriber{MsgType}(ascii(topic), cb, cb_args; kwargs...)
 
-end #version check
+end #check

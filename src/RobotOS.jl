@@ -23,6 +23,8 @@ function __init__()
     end
 end
 
+_threads_enabled() = ccall(:jl_threading_enabled, Cint, ()) != 0
+
 include("debug.jl")
 include("time.jl")
 include("gentypes.jl")
