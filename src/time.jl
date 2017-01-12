@@ -1,12 +1,12 @@
 #All time related types and functions
 
-import Base: convert, isless, sleep, +, -, ==
+import Base: convert, isless, sleep, +, -, *, ==
 export Time, Duration, Rate, to_sec, to_nsec, get_rostime, rossleep
 
 #Time type definitions
 abstract TVal
 
-type Time <: TVal
+immutable Time <: TVal
     secs::Int32
     nsecs::Int32
     function Time(s::Real,n::Real)
@@ -17,7 +17,7 @@ end
 Time() = Time(0,0)
 Time(t::Real) = Time(t,0)
 
-type Duration <: TVal
+immutable Duration <: TVal
     secs::Int32
     nsecs::Int32
     function Duration(s::Real,n::Real)
@@ -50,6 +50,8 @@ end
 -(t1::Time,     t2::Duration) = Time(    t1.secs-t2.secs, t1.nsecs-t2.nsecs)
 -(t1::Duration, t2::Duration) = Duration(t1.secs-t2.secs, t1.nsecs-t2.nsecs)
 -(t1::Time,     t2::Time)     = Duration(t1.secs-t2.secs, t1.nsecs-t2.nsecs)
+*(td::Duration, tf::Real)     = Duration(tf*td.secs     , tf*td.nsecs)
+*(tf::Real, td::Duration)     = Duration(tf*td.secs     , tf*td.nsecs)
 
 #PyObject conversions
 convert(::Type{Time},     o::PyObject) = Time(    o[:secs],o[:nsecs])
@@ -66,28 +68,6 @@ convert{T<:TVal}(::Type{Float64}, t::T) = to_sec(t)
 =={T<:TVal}(t1::T, t2::T)     = (t1.secs == t2.secs) && (t1.nsecs == t2.nsecs)
 isless{T<:TVal}(t1::T, t2::T) = to_nsec(t1) < to_nsec(t2)
 
-#----------------------------
-#Extra time-related utilities
-#----------------------------
-
-type Rate
-    o::PyObject
-end
-Rate(hz::Real) = Rate(__rospy__[:Rate](hz))
-Rate(d::Duration) = Rate(1.0/to_sec(d))
-
-type Timer
-    t::PyObject
-end
-
-type TimerEvent
-    last_expected::Time
-    last_real::Time
-    current_expected::Time
-    current_real::Time
-    last_duration::Duration
-end
-
 function get_rostime()
     t = try
         __rospy__[:get_rostime]()
@@ -98,8 +78,36 @@ function get_rostime()
 end
 now() = get_rostime()
 
-rossleep(t::Real) = __rospy__[:sleep](t)
-rossleep(t::Duration) = __rospy__[:sleep](convert(PyObject, t))
-rossleep(r::Rate) = pycall(r.o["sleep"], PyAny)
+function rossleep(td::Duration)
+    tnsecs = to_nsec(td)
+    t0 = time_ns()
+    while time_ns()-t0 < tnsecs
+        yield()
+        __rospy__[:sleep](0.001)
+    end
+end
+rossleep(t::Real) = rossleep(Duration(t))
+
 sleep(t::Duration) = rossleep(t)
+
+type Rate
+    duration::Duration
+    last_time::Time
+end
+Rate(d::Duration) = Rate(d, get_rostime())
+Rate(hz::Real) = Rate(Duration(1.0/hz), get_rostime())
+
+function rossleep(r::Rate)
+    ctime = get_rostime()
+    if r.last_time > ctime
+        r.last_time = ctime
+    end
+    elapsed = ctime - r.last_time
+    rossleep(r.duration - elapsed)
+    r.last_time += r.duration
+
+    if ctime - r.last_time > r.duration*2
+        r.last_time = ctime
+    end
+end
 sleep(t::Rate) = rossleep(t)

@@ -26,15 +26,16 @@ d3 = Duration(0, 1)
 @test d1 + d2 + d3 == Duration(t3.secs, t3.nsecs)
 @test d2 - d1 - d3 == Duration(0, 500_000_000)
 
-tt = Time()
-tt.secs = 2
+@test d2*2 == Duration(3,0)
+@test 3.0*d2 == Duration(4,500_000_000)
+
+tt = Time(2,0)
 @test tt == Time(2.0)
 @test convert(Float64,tt) == 2.0
 @test to_sec(tt) == 2.0
 @test to_nsec(tt) == 2_000_000_000
 
-dt = Duration()
-dt.secs = 3
+dt = Duration(3,0)
 @test dt == Duration(3.0)
 @test convert(Float64,dt) == 3.0
 @test to_sec(dt) == 3.0
