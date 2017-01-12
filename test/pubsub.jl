@@ -36,23 +36,13 @@ function pose_cb(msg::PoseStamped, msgs::Vector{PoseStamped})
 end
 pose_cb(PoseStamped(), msgs) #warm up run
 
-if RobotOS._threads_enabled() #callbacks are broken
-
-warn("Not testing subscriber!")
-
-publish_messages(ros_pub, refs, 20.0)
-rossleep(Duration(5.0))
-Nreceived = get_param("/num_received_messages")
-@test Nreceived == length(refs)
-set_param("/num_received_messages", 0)
-
-else #callbacks not broken
-
 const ros_sub = Subscriber("poses", PoseStamped, pose_cb, (msgs,), queue_size = 10)
 
 #First message doesn't go out for some reason
 publish(ros_pub, Vector3(1.1,2.2,3.3))
 rossleep(Duration(1.0))
+
+#Test messages
 publish_messages(ros_pub, refs, 20.0)
 rossleep(Duration(1.0))
 
@@ -65,5 +55,3 @@ for i=1:Nmsgs
     @test_approx_eq msgs[i].pose.position.z refs[i].z
 end
 empty!(msgs)
-
-end #check

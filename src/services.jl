@@ -32,31 +32,21 @@ end
     resp
 end
 
-if _threads_enabled() #callbacks are broken
-
-type Service{T}
-end
-
-Service(args...) = error(
-"""Providing a service is currently broken on julia v0.5 and above. See
-https://github.com/jdlangs/RobotOS.jl/issues/15 for ongoing efforts to fix this.""")
-
-else #callbacks not broken
-
 type Service{SrvType <: ServiceDefinition}
-    o::PyObject
-    jl_handler
+    handler
+    srv_obj::PyObject
+    cb_interface::PyObject
+    async_loop::Task
 
     function Service(name::AbstractString, handler; kwargs...)
         @debug("Providing <$SrvType> service at '$name'")
         rospycls = _get_rospy_class(SrvType)
-        ReqType = _srv_reqtype(SrvType)
-        jl_hndl(req::PyObject) =
-            convert(PyObject, handler(convert(ReqType,req)))
-        try
-            new(__rospy__[:Service](ascii(name), rospycls, jl_hndl; kwargs...),
-                jl_hndl
-            )
+
+        cond = Base.AsyncCondition()
+        pysrv = _py_ros_callbacks["ServiceCallback"](CB_NOTIFY_PTR, cond.handle)
+
+        srvobj = try
+            __rospy__[:Service](ascii(name), rospycls, pysrv["srv_cb"]; kwargs...)
         catch err
             if isa(err, PyCall.PyError)
                 error("Problem during service creation: $(err.val[:args][1])")
@@ -64,6 +54,14 @@ type Service{SrvType <: ServiceDefinition}
                 rethrow(err)
             end
         end
+
+        rosobj = new(handler, srvobj, pysrv)
+
+        cbloop = Task(() -> _callback_async_loop(rosobj, cond))
+        schedule(cbloop)
+
+        rosobj.async_loop = cbloop
+        return rosobj
     end
 end
 function Service{SrvType<:ServiceDefinition}(
@@ -74,8 +72,6 @@ function Service{SrvType<:ServiceDefinition}(
 )
     Service{SrvType}(ascii(name), handler; kwargs...)
 end
-
-end #check
 
 function wait_for_service(service::AbstractString; kwargs...)
     try

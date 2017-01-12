@@ -8,6 +8,9 @@ const srvcall = ServiceProxy("callme", SetBool)
 println("Waiting for 'callme' service...")
 wait_for_service("callme")
 
+const flag = Bool[false]
+const Nposes = 5
+
 function srv_cb(req::GetPlanRequest)
     println("GetPlan call received")
     @test_approx_eq(req.start.pose.position.x, 1.0)
@@ -23,23 +26,6 @@ function srv_cb(req::GetPlanRequest)
     flag[1] = true
     return resp
 end
-
-if RobotOS._threads_enabled() #callbacks are broken
-
-warn("Not testing service provider!")
-
-println("Calling service...")
-srvcall(SetBoolRequest(false))
-rossleep(Duration(5.0))
-
-didcall = get_param("/received_service_call")
-@test didcall
-set_param("/received_service_call", false)
-
-else #callbacks not broken
-
-const flag = Bool[false]
-const Nposes = 5
 
 const srvlisten = Service("getplan", GetPlan, srv_cb)
 
@@ -63,8 +49,6 @@ if flag[1]
     end
 end
 empty!(msgs)
-
-end #check
 
 #Test error handling
 @test_throws ErrorException wait_for_service("fake_srv", timeout=1.0)

@@ -79,11 +79,12 @@ end
 now() = get_rostime()
 
 function rossleep(td::Duration)
+    #Busy sleep loop needed to allow both julia and python async activity
     tnsecs = to_nsec(td)
     t0 = time_ns()
     while time_ns()-t0 < tnsecs
-        yield()
-        __rospy__[:sleep](0.001)
+        yield()                   #Allow julia callback loops to run
+        __rospy__[:sleep](0.001)  #Allow rospy comm threads to run
     end
 end
 rossleep(t::Real) = rossleep(Duration(t))
