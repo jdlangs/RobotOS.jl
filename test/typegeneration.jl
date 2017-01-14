@@ -77,6 +77,4 @@ emptymsg = std_msgs.msg.Empty()
 @test isdefined(std_msgs.msg, :Float64Msg)
 @test isdefined(std_msgs.msg, :StringMsg)
 @test Publisher{std_msgs.msg.Float64Msg}("x", queue_size=10) != nothing
-if ! RobotOS._threads_enabled()
-    @test Subscriber{std_msgs.msg.Float64Msg}("x", x->x, queue_size=10) != nothing
-end
+@test Subscriber{std_msgs.msg.Float64Msg}("x", x->x, queue_size=10) != nothing

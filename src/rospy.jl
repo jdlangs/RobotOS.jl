@@ -6,10 +6,17 @@ export init_node, is_shutdown, spin,
 #General rospy functions
 init_node(name::AbstractString; args...) =
     __rospy__[:init_node](ascii(name); args...)
-spin()                 = __rospy__[:spin]()
 is_shutdown()          = __rospy__[:is_shutdown]()
 get_published_topics() = __rospy__[:get_published_topics]()
 get_ros_root()         = __rospy__[:get_ros_root]()
+
+function spin()
+    #Have to make sure both Julia tasks and python threads can wake up so
+    #can't just call rospy's spin
+    while ! is_shutdown()
+        rossleep(Duration(0.001))
+    end
+end
 
 #Parameter server API
 function get_param(param_name::AbstractString, def=nothing)
