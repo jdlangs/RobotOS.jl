@@ -1,7 +1,8 @@
 language: julia
 julia:
+  - 0.4
+  - 0.5
   - nightly
-  - release
 sudo: required
 dist: trusty
 before_install:
