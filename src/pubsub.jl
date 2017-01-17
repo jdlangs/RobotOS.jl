@@ -1,6 +1,8 @@
 #API for publishing and subscribing to message topics
 export Publisher, Subscriber, publish
 
+using Compat
+
 type Publisher{MsgType<:MsgT}
     o::PyObject
 
@@ -28,7 +30,7 @@ type Subscriber{MsgType<:MsgT}
         @debug("Creating <$(string(MsgType))> subscriber on topic: '$topic'")
         rospycls = _get_rospy_class(MsgType)
 
-        cond = Base.AsyncCondition()
+        cond = Compat.AsyncCondition()
         mqueue = _py_ros_callbacks["MessageQueue"](CB_NOTIFY_PTR, cond.handle)
         subobj = __rospy__[:Subscriber](ascii(topic), rospycls, mqueue["storemsg"]; kwargs...)
 
