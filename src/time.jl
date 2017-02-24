@@ -1,10 +1,12 @@
 #All time related types and functions
 
+using Compat
+
 import Base: convert, isless, sleep, +, -, *, ==
 export Time, Duration, Rate, to_sec, to_nsec, get_rostime, rossleep
 
 #Time type definitions
-abstract TVal
+@compat abstract type TVal end
 
 immutable Time <: TVal
     secs::Int32

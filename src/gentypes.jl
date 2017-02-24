@@ -8,7 +8,7 @@ export @rosimport, rostypegen, rostypereset, gentypes, cleartypes
 #Type definitions
 #Composite types for internal use. Keeps track of the imported types and helps
 #keep code generation orderly.
-abstract ROSModule
+@compat abstract type ROSModule end
 type ROSPackage
     name::String
     msg::ROSModule
@@ -33,7 +33,7 @@ type ROSSrvModule <: ROSModule
     ROSSrvModule(pkg) = new(pkg, String[], Set{String}())
 end
 
-#These two global objects maintain the hierarchy from multiple calls to
+#These global objects maintain the hierarchy from multiple calls to
 #`@rosimport` and keep the link to the Python objects whenever communication
 #goes between RobotOS and rospy.
 const _rospy_imports = Dict{String,ROSPackage}()
@@ -61,9 +61,9 @@ const _ros_builtin_types = Dict{String, Symbol}(
     )
 
 #Abstract supertypes of all generated types
-abstract MsgT
-abstract SrvT
-abstract ServiceDefinition
+@compat abstract type AbstractMsg end
+@compat abstract type AbstractSrv end
+@compat abstract type AbstractService end
 
 #Rearranges the expression into a RobotOS._rosimport call. Input comes in as a
 #single package qualified expression, or as a tuple expression where the first
@@ -317,15 +317,15 @@ end
 
 #The imports specific to each module, including dependant packages
 function _importexprs(mod::ROSMsgModule)
-    imports = Expr[Expr(:import, :RobotOS, :MsgT)]
+    imports = Expr[Expr(:import, :RobotOS, :AbstractMsg)]
     othermods = filter(d -> d != _name(mod), mod.deps)
     append!(imports, [Expr(:using,Symbol(m),:msg) for m in othermods])
     imports
 end
 function _importexprs(mod::ROSSrvModule)
     imports = Expr[
-        Expr(:import, :RobotOS, :SrvT),
-        Expr(:import, :RobotOS, :ServiceDefinition),
+        Expr(:import, :RobotOS, :AbstractSrv),
+        Expr(:import, :RobotOS, :AbstractService),
         Expr(:import, :RobotOS, :_srv_reqtype),
         Expr(:import, :RobotOS, :_srv_resptype),
     ]
@@ -362,7 +362,7 @@ function buildtype(mod::ROSMsgModule, typename::String)
     memtypes = pyobj[:_slot_types]
     members = collect(zip(memnames, memtypes))
 
-    typecode(fulltypestr, :MsgT, members)
+    typecode(fulltypestr, :AbstractMsg, members)
 end
 
 #All the generated code for a generated service type
@@ -376,7 +376,7 @@ function buildtype(mod::ROSSrvModule, typename::String)
     memtypes = reqobj[:_slot_types]
     reqmems = collect(zip(memnames, memtypes))
     pyreq  = :(RobotOS._rospy_objects[$req_typestr])
-    reqexprs  = typecode(req_typestr, :SrvT, reqmems)
+    reqexprs  = typecode(req_typestr, :AbstractSrv, reqmems)
 
     resp_typestr = _rostypestr(mod, string(typename,"Response"))
     respobj = _rospy_objects[resp_typestr]
@@ -384,13 +384,13 @@ function buildtype(mod::ROSSrvModule, typename::String)
     memtypes = respobj[:_slot_types]
     respmems = collect(zip(memnames, memtypes))
     pyresp = :(RobotOS._rospy_objects[$resp_typestr])
-    respexprs = typecode(resp_typestr, :SrvT, respmems)
+    respexprs = typecode(resp_typestr, :AbstractSrv, respmems)
 
     defsym = Symbol(typename)
     reqsym = Symbol(string(typename,"Request"))
     respsym = Symbol(string(typename,"Response"))
     srvexprs = Expr[
-        :(immutable $defsym <: ServiceDefinition end),
+        :(immutable $defsym <: AbstractService end),
         :(_typerepr(::Type{$defsym}) = $(_rostypestr(mod,typename))),
         :(_srv_reqtype(::Type{$defsym}) = $reqsym),
         :(_srv_resptype(::Type{$defsym}) = $respsym),
@@ -411,8 +411,8 @@ function typecode(rosname::String, super::Symbol, members::Vector)
 
     #generated code should not conflict with julia built-ins
     #some messages need renaming
-    suffix = if super == :MsgT; "Msg"
-         elseif super == :SrvT; "Srv"
+    suffix = if super == :AbstractMsg; "Msg"
+         elseif super == :AbstractSrv; "Srv"
          else; "ROS" end
     jlsym = Symbol(_jl_safe_name(tname,suffix))
 
