@@ -13,8 +13,8 @@ const Nposes = 5
 
 function srv_cb(req::GetPlanRequest)
     println("GetPlan call received")
-    @test_approx_eq(req.start.pose.position.x, 1.0)
-    @test_approx_eq(req.goal.pose.position.y, 1.0)
+    @test req.start.pose.position.x ≈ 1.0
+    @test req.goal.pose.position.y ≈ 1.0
 
     resp = GetPlanResponse()
     for i=1:Nposes
@@ -45,7 +45,7 @@ if flag[1]
     rossleep(Duration(2.0))
     @test length(msgs) == Nposes
     for i=1:Nposes
-        @test_approx_eq(msgs[i].pose.position.z, i)
+        @test msgs[i].pose.position.z ≈ i
     end
 end
 empty!(msgs)

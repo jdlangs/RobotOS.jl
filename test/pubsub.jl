@@ -7,7 +7,7 @@ using geometry_msgs.msg
 const Nmsgs = 10
 const rate = 20. #Hz
 const msgs = PoseStamped[]
-const refs = Array(Vector3, Nmsgs)
+const refs = Array{Vector3}(Nmsgs)
 const t0 = to_nsec(get_rostime())
 
 for i=1:Nmsgs
@@ -50,8 +50,8 @@ println("Received ",length(msgs)," / ",Nmsgs)
 
 @test length(msgs) == Nmsgs
 for i=1:Nmsgs
-    @test_approx_eq msgs[i].pose.position.x refs[i].x
-    @test_approx_eq msgs[i].pose.position.y refs[i].y
-    @test_approx_eq msgs[i].pose.position.z refs[i].z
+    @test msgs[i].pose.position.x ≈ refs[i].x
+    @test msgs[i].pose.position.y ≈ refs[i].y
+    @test msgs[i].pose.position.z ≈ refs[i].z
 end
 empty!(msgs)
