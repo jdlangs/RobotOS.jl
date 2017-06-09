@@ -36,8 +36,9 @@ end
     Subscriber{T}(topic, callback, cb_args=(); kwargs...)
     Subscriber(topic, T, callback, cb_args=(); kwargs...)
 
-Create a subscription to a topic with a callback to use when a message is received, which can be any
-callable type. Keyword arguments are directly passed to rospy.
+Create a subscription to a topic with message type `T` with a callback to use when a message is
+received, which can be any callable type. Extra arguments provided to the callback when invoked
+can be provided in the `cb_args` tuple. Keyword arguments are directly passed to rospy.
 """
 type Subscriber{MsgType<:AbstractMsg}
     callback

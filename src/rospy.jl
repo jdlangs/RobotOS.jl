@@ -25,7 +25,7 @@ get_ros_root()         = __rospy__[:get_ros_root]()
 """
     spin()
 
-Block execution and only process callbacks/service calls until the node is shut down.
+Block execution and process callbacks/service calls until the node is shut down.
 """
 function spin()
     #Have to make sure both Julia tasks and python threads can wake up so

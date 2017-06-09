@@ -95,7 +95,7 @@ to_nsec{T<:TVal}(t::T) = 1_000_000_000*t.secs + t.nsecs
 convert{T<:TVal}(::Type{Float64}, t::T) = to_sec(t)
 
 #Comparisons
-=={T<:TVal}(t1::T, t2::T)     = (t1.secs == t2.secs) && (t1.nsecs == t2.nsecs)
+=={T<:TVal}(t1::T, t2::T) = (t1.secs == t2.secs) && (t1.nsecs == t2.nsecs)
 isless{T<:TVal}(t1::T, t2::T) = to_nsec(t1) < to_nsec(t2)
 
 """
@@ -103,7 +103,7 @@ isless{T<:TVal}(t1::T, t2::T) = to_nsec(t1) < to_nsec(t2)
 
 Used to allow a loop to run at a fixed rate. Construct with a frequency or `Duration` and use with
 `rossleep` or `sleep`. The rate object will record execution time of other work in the loop and
-modify the sleep time to compensate and keep the loop rate as consistent as possible.
+modify the sleep time to compensate, keeping the loop rate as consistent as possible.
 """
 type Rate
     duration::Duration
@@ -136,7 +136,8 @@ now() = get_rostime()
 """
     rossleep(t)
 
-Call the ROS sleep function with a number of seconds, a `Duration` or a `Rate` object.
+Sleep and process callbacks for a number of seconds implied by the type and value of `t`, which may
+be a real-value, a `Duration` object, or a `Rate` object.
 """
 function rossleep(td::Duration)
     #Busy sleep loop needed to allow both julia and python async activity
@@ -166,8 +167,7 @@ end
 """
     sleep(t::Duration), sleep(t::Rate)
 
-Call the ROS sleep function with a `Duration` or `Rate` object. Use `rossleep` to specify sleep time
-directly.
+Call `rossleep` with a `Duration` or `Rate` object. Use `rossleep` to specify sleep time directly.
 """
 sleep(t::Duration) = rossleep(t)
 sleep(t::Rate) = rossleep(t)
