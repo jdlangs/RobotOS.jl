@@ -8,6 +8,15 @@ export Time, Duration, Rate, to_sec, to_nsec, get_rostime, rossleep
 #Time type definitions
 @compat abstract type TVal end
 
+"""
+    Time(secs, nsecs), Time(), Time(t::Real)
+
+Object representing an absolute time from a fixed past reference point at nanosecond precision.
+
+Basic arithmetic can be performed on combinations of `Time` and `Duration` objects that make sense.
+For example, if `t::Time` and `d::Duration`, `t+d` will be a `Time`, `d+d` a Duration`, `t-d` a
+`Time`, `d-d` a `Duration`, and `t-t` a `Duration`.
+"""
 immutable Time <: TVal
     secs::Int32
     nsecs::Int32
@@ -19,6 +28,15 @@ end
 Time() = Time(0,0)
 Time(t::Real) = Time(t,0)
 
+"""
+    Duration(secs, nsecs), Duration(), Duration(t::Real)
+
+Object representing a relative period of time at nanosecond precision.
+
+Basic arithmetic can be performed on combinations of `Time` and `Duration` objects that make sense.
+For example, if `t::Time` and `d::Duration`, `t+d` will be a `Time`, `d+d` a `Duration`, `t-d` a
+`Time`, `d-d` a `Duration`, and `t-t` a `Duration`.
+"""
 immutable Duration <: TVal
     secs::Int32
     nsecs::Int32
@@ -45,7 +63,6 @@ function _canonical_time(secs, nsecs)
     (secs32 + addsecs, crnsecs)
 end
 
-#Temporal arithmetic
 +(t1::Time,     t2::Duration) = Time(    t1.secs+t2.secs, t1.nsecs+t2.nsecs)
 +(t1::Duration, t2::Time)     = Time(    t1.secs+t2.secs, t1.nsecs+t2.nsecs)
 +(t1::Duration, t2::Duration) = Duration(t1.secs+t2.secs, t1.nsecs+t2.nsecs)
@@ -62,14 +79,44 @@ convert(::Type{PyObject}, t::Time)     = __rospy__[:Time](    t.secs,t.nsecs)
 convert(::Type{PyObject}, t::Duration) = __rospy__[:Duration](t.secs,t.nsecs)
 
 #Real number conversions
+"""
+    to_sec(t)
+
+Return the value of a ROS time object in absolute seconds (with nanosecond precision)
+"""
 to_sec{T<:TVal}(t::T) = t.secs + 1e-9*t.nsecs
+
+"""
+    to_nsec(t)
+
+Return the value of a ROS time object in nanoseconds as an integer.
+"""
 to_nsec{T<:TVal}(t::T) = 1_000_000_000*t.secs + t.nsecs
 convert{T<:TVal}(::Type{Float64}, t::T) = to_sec(t)
 
 #Comparisons
-=={T<:TVal}(t1::T, t2::T)     = (t1.secs == t2.secs) && (t1.nsecs == t2.nsecs)
+=={T<:TVal}(t1::T, t2::T) = (t1.secs == t2.secs) && (t1.nsecs == t2.nsecs)
 isless{T<:TVal}(t1::T, t2::T) = to_nsec(t1) < to_nsec(t2)
 
+"""
+    Rate(hz::Real), Rate(d::Duration)
+
+Used to allow a loop to run at a fixed rate. Construct with a frequency or `Duration` and use with
+`rossleep` or `sleep`. The rate object will record execution time of other work in the loop and
+modify the sleep time to compensate, keeping the loop rate as consistent as possible.
+"""
+type Rate
+    duration::Duration
+    last_time::Time
+end
+Rate(d::Duration) = Rate(d, get_rostime())
+Rate(hz::Real) = Rate(Duration(1.0/hz), get_rostime())
+
+"""
+    get_rostime()
+
+Return the current ROS time as a `Time` object.
+"""
 function get_rostime()
     t = try
         __rospy__[:get_rostime]()
@@ -78,8 +125,20 @@ function get_rostime()
     end
     convert(Time, t)
 end
+
+"""
+    RobotOS.now()
+
+Return the current ROS time as a `Time` object.
+"""
 now() = get_rostime()
 
+"""
+    rossleep(t)
+
+Sleep and process callbacks for a number of seconds implied by the type and value of `t`, which may
+be a real-value, a `Duration` object, or a `Rate` object.
+"""
 function rossleep(td::Duration)
     #Busy sleep loop needed to allow both julia and python async activity
     tnsecs = to_nsec(td)
@@ -90,15 +149,6 @@ function rossleep(td::Duration)
     end
 end
 rossleep(t::Real) = rossleep(Duration(t))
-
-sleep(t::Duration) = rossleep(t)
-
-type Rate
-    duration::Duration
-    last_time::Time
-end
-Rate(d::Duration) = Rate(d, get_rostime())
-Rate(hz::Real) = Rate(Duration(1.0/hz), get_rostime())
 
 function rossleep(r::Rate)
     ctime = get_rostime()
@@ -113,4 +163,11 @@ function rossleep(r::Rate)
         r.last_time = ctime
     end
 end
+
+"""
+    sleep(t::Duration), sleep(t::Rate)
+
+Call `rossleep` with a `Duration` or `Rate` object. Use `rossleep` to specify sleep time directly.
+"""
+sleep(t::Duration) = rossleep(t)
 sleep(t::Rate) = rossleep(t)

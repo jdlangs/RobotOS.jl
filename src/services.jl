@@ -3,6 +3,13 @@ export Service, ServiceProxy, wait_for_service
 
 using Compat
 
+"""
+    ServiceProxy{T}(name; kwargs...)
+    ServiceProxy(name, T; kwargs...)
+
+Create a proxy object used to invoke a remote service. Use `srv_proxy(msg_request)` with the object
+to invoke the service call. Keyword arguments are directly passed to rospy.
+"""
 type ServiceProxy{SrvType <: AbstractService}
     o::PyObject
 
@@ -32,6 +39,13 @@ end
     resp
 end
 
+"""
+    Service{T}(name, callback; kwargs...)
+    Service(name, T, callback; kwargs...)
+
+Create a service object that can receive requests and provide responses. The callback can be of
+any callable type. Keyword arguments are directly passed to rospy.
+"""
 type Service{SrvType <: AbstractService}
     handler
     srv_obj::PyObject
@@ -71,6 +85,12 @@ function Service{ST<:AbstractService}(name::AbstractString, srv::Type{ST}, handl
     Service{ST}(ascii(name), handler; kwargs...)
 end
 
+"""
+    wait_for_service(srv_name; kwargs...)
+
+Block until the specified service is available. Keyword arguments are directly passed to rospy.
+Throws an exception if the waiting timeout period is exceeded.
+"""
 function wait_for_service(service::AbstractString; kwargs...)
     try
         __rospy__[:wait_for_service](ascii(service); kwargs...)

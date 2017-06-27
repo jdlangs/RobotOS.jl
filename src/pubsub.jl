@@ -3,6 +3,13 @@ export Publisher, Subscriber, publish
 
 using Compat
 
+"""
+    Publisher{T}(topic; kwargs...)
+    Publisher(topic, T; kwargs...)
+
+Create an object to publish messages of type `T` on a topic. Keyword arguments are directly passed
+to rospy.
+"""
 type Publisher{MsgType<:AbstractMsg}
     o::PyObject
 
@@ -16,10 +23,23 @@ end
 Publisher{MT<:AbstractMsg}(topic::AbstractString, ::Type{MT}; kwargs...) =
     Publisher{MT}(ascii(topic); kwargs...)
 
+"""
+    publish(p::Publisher{T}, msg::T)
+
+Publish `msg` on `p`, a `Publisher` with matching message type.
+"""
 function publish{MT<:AbstractMsg}(p::Publisher{MT}, msg::MT)
     pycall(p.o["publish"], PyAny, convert(PyObject, msg))
 end
 
+"""
+    Subscriber{T}(topic, callback, cb_args=(); kwargs...)
+    Subscriber(topic, T, callback, cb_args=(); kwargs...)
+
+Create a subscription to a topic with message type `T` with a callback to use when a message is
+received, which can be any callable type. Extra arguments provided to the callback when invoked
+can be provided in the `cb_args` tuple. Keyword arguments are directly passed to rospy.
+"""
 type Subscriber{MsgType<:AbstractMsg}
     callback
     callback_args::Tuple
