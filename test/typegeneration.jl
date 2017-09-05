@@ -48,6 +48,10 @@ pypose = convert(PyObject, posestamp)
 @test pypose[:pose][:position][:x] == 1.
 @test pypose[:pose][:position][:y] == 2.
 @test pypose[:pose][:position][:z] == 3.
+pypose2 = PyObject(posestamp)
+@test pypose2[:pose][:position][:x] == 1.
+@test pypose2[:pose][:position][:y] == 2.
+@test pypose2[:pose][:position][:z] == 3.
 pose2 = convert(geometry_msgs.msg.PoseStamped, pypose)
 @test pose2.pose.position.x == 1.
 @test pose2.pose.position.y == 2.

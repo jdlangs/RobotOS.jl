@@ -2,6 +2,7 @@
 
 using Compat
 import Compat: String, Symbol
+using PyCall
 
 export @rosimport, rostypegen, rostypereset
 
@@ -632,6 +633,11 @@ function _get_rospy_class(typ::DataType)
         end
     rospycls
 end
+
+#Overwrite PyCall's default constructor to call the `convert` functions generated here
+PyCall.PyObject(m::AbstractMsg) = convert(PyCall.PyObject, m)
+PyCall.PyObject(s::AbstractSrv) = convert(PyCall.PyObject, s)
+PyCall.PyObject(s::AbstractService) = convert(PyCall.PyObject, s)
 
 _jl_safe_name(name::AbstractString, suffix) = _nameconflicts(name) ?
     string(name,suffix) :
