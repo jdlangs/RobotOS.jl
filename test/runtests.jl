@@ -1,4 +1,5 @@
 using Base.Test
+using PyCall
 using RobotOS
 using Compat
 RobotOS.debug(true)

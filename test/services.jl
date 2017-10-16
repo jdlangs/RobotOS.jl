@@ -1,7 +1,7 @@
 #pubsub.jl must be run first
 
-using std_srvs.srv
-using nav_msgs.srv
+using .std_srvs.srv
+using .nav_msgs.srv
 
 #Set up services
 const srvcall = ServiceProxy("callme", SetBool)

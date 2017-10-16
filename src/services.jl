@@ -58,7 +58,7 @@ type Service{SrvType <: AbstractService}
         @debug("Providing <$ST> service at '$name'")
         rospycls = _get_rospy_class(ST)
 
-        cond = Compat.AsyncCondition()
+        cond = Base.AsyncCondition()
         pysrv = _py_ros_callbacks["ServiceCallback"](CB_NOTIFY_PTR, cond.handle)
 
         srvobj = try
