@@ -21,6 +21,13 @@ before_script:
   - sleep 5
 after_success:
   - julia -e 'cd(Pkg.dir("RobotOS")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
+  - echo $TRAVIS_JULIA_VERSION
+  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+  - julia -e 'run(`lualatex -v`)'
+  - julia -e 'Pkg.clone(pwd())'
+  - julia -e 'Pkg.add("RobotOS.jl")'
+  - julia -e 'Pkg.add("Documenter");'
+  - julia -e 'cd(Pkg.dir("RobotOSDocs"));ENV["DOCUMENTER_DEBUG"]=true; include(joinpath("docs", "make.jl"))'
 after_script:
   - killall roscore
   - killall python
