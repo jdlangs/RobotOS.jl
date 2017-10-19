@@ -101,6 +101,8 @@ macro rosimport(input)
     end
 end
 
+_get_quote_value(input::QuoteNode) = input.value
+_get_quote_value(input::Expr) = (@assert input.head == :quote; input.args[1])
 #Return the pkg and types strings for a single expression of form:
 #  pkg.[msg|srv].type or pkg.[msg|srv]:type
 function _pkgtype_import(input::Expr)
@@ -109,7 +111,7 @@ function _pkgtype_import(input::Expr)
     @assert input.args[1].head == :(.) "Improper @rosimport input"
     p = input.args[1].args[1]
     @assert isa(p, Symbol) "Package name ($(string(p))) not a symbol"
-    m_or_s = input.args[1].args[2].args[1]
+    m_or_s = _get_quote_value(input.args[1].args[2])
     @assert m_or_s in (:msg,:srv) "Improper @rosimport input"
     ps = string(p)
     msb = m_or_s == :msg
@@ -119,6 +121,10 @@ function _pkgtype_import(input::Expr)
     elseif isa(input.args[2], Expr)
         @assert length(input.args[2].args) == 1 "Type name not a symbol"
         tsym = input.args[2].args[1]
+        @assert isa(tsym, Symbol) "Type name ($(string(tsym))) not a symbol"
+        ts = string(tsym)
+    elseif isa(input.args[2], QuoteNode)
+        tsym = input.args[2].value
         @assert isa(tsym, Symbol) "Type name ($(string(tsym))) not a symbol"
         ts = string(tsym)
     end
@@ -340,7 +346,7 @@ end
 function _importexprs(mod::ROSMsgModule)
     imports = Expr[Expr(:import, :RobotOS, :AbstractMsg)]
     othermods = filter(d -> d != _name(mod), mod.deps)
-    append!(imports, [Expr(:using,Symbol(m),:msg) for m in othermods])
+    append!(imports, [Expr(:using,:Main,Symbol(m),:msg) for m in othermods])
     imports
 end
 function _importexprs(mod::ROSSrvModule)
@@ -350,7 +356,7 @@ function _importexprs(mod::ROSSrvModule)
         Expr(:import, :RobotOS, :_srv_reqtype),
         Expr(:import, :RobotOS, :_srv_resptype),
     ]
-    append!(imports, [Expr(:using,Symbol(m),:msg) for m in mod.deps])
+    append!(imports, [Expr(:using,:Main,Symbol(m),:msg) for m in mod.deps])
     imports
 end
 

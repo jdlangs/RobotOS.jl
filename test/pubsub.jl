@@ -2,7 +2,7 @@
 #works alongside echonode.py
 #typegeneration.jl must be run first
 
-using geometry_msgs.msg
+using .geometry_msgs.msg
 
 const Nmsgs = 10
 const rate = 20. #Hz

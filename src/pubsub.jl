@@ -53,7 +53,7 @@ type Subscriber{MsgType<:AbstractMsg}
         @debug("Creating <$(string(MT))> subscriber on topic: '$topic'")
         rospycls = _get_rospy_class(MT)
 
-        cond = Compat.AsyncCondition()
+        cond = Base.AsyncCondition()
         mqueue = _py_ros_callbacks["MessageQueue"](CB_NOTIFY_PTR, cond.handle)
         subobj = __rospy__[:Subscriber](ascii(topic), rospycls, mqueue["storemsg"]; kwargs...)
 
