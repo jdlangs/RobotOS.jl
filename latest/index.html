@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="description" content="Julia client library for ROS">
+        <meta name="author" content="Josh Langsfeld">
+        
+        <link rel="shortcut icon" href="./img/favicon.ico">
+        <title>RobotOS.jl</title>
+        <link href="./css/bootstrap-custom.min.css" rel="stylesheet">
+        <link href="./css/font-awesome-4.5.0.css" rel="stylesheet">
+        <link href="./css/base.css" rel="stylesheet">
+        <link rel="stylesheet" href="./css/highlight.css">
+        <link href="./assets/Documenter.css" rel="stylesheet">
+        <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+        <!--[if lt IE 9]>
+            <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+        <![endif]-->
+
+        <script src="./js/jquery-1.10.2.min.js"></script>
+        <script src="./js/bootstrap-3.0.3.min.js"></script>
+        <script src="./js/highlight.pack.js"></script> 
+    </head>
+
+    <body class="homepage">
+
+        <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+    <div class="container">
+
+        <!-- Collapsed navigation -->
+        <div class="navbar-header">
+            <!-- Expander button -->
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href=".">RobotOS.jl</a>
+        </div>
+
+        <!-- Expanded navigation -->
+        <div class="navbar-collapse collapse">
+                <!-- Main navigation -->
+                <ul class="nav navbar-nav">
+                    <li class="active">
+                        <a href=".">Introduction</a>
+                    </li>
+                    <li >
+                        <a href="api/">API Reference</a>
+                    </li>
+                </ul>
+
+            <ul class="nav navbar-nav navbar-right">
+                <li>
+                    <a href="#" data-toggle="modal" data-target="#mkdocs_search_modal">
+                        <i class="fa fa-search"></i> Search
+                    </a>
+                </li>
+                    <li class="disabled">
+                        <a rel="next" >
+                            <i class="fa fa-arrow-left"></i> Previous
+                        </a>
+                    </li>
+                    <li >
+                        <a rel="prev" href="api/">
+                            Next <i class="fa fa-arrow-right"></i>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="https://github.com/edit/master/docs/index.md"><i class="fa fa-github"></i> Edit on GitHub</a>
+                    </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+        <div class="container">
+                <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
+    <ul class="nav bs-sidenav">
+        <li class="main active"><a href="#robotosjl-documentation">RobotOS.jl Documentation</a></li>
+            <li><a href="#overview">Overview</a></li>
+            <li><a href="#usage-type-generation">Usage: Type Generation</a></li>
+            <li><a href="#usage-ros-api">Usage: ROS API</a></li>
+            <li><a href="#ros-integration">ROS Integration</a></li>
+            <li><a href="#full-example">Full example</a></li>
+            <li><a href="#versions">Versions</a></li>
+    </ul>
+</div></div>
+                <div class="col-md-9" role="main">
+
+<p><a id='RobotOS.jl-Documentation-1'></a></p>
+<h1 id="robotosjl-documentation">RobotOS.jl Documentation</h1>
+<p><a id='Overview-1'></a></p>
+<h2 id="overview">Overview</h2>
+<p><a id='Description-1'></a></p>
+<h3 id="description">Description</h3>
+<p>This package enables interfacing Julia code with a ROS (<a href="http://wiki.ros.org">Robot Operating System</a>) system. It works by generating native Julia types for ROS types, the same as in C++ or Python, and then wrapping rospy through the PyCall package to get communication through topics, services, and parameters.</p>
+<p><a id='Installation-1'></a></p>
+<h3 id="installation">Installation</h3>
+<div class="codehilite"><pre><span class="n">Pkg</span><span class="p">.</span><span class="n">add</span><span class="p">(</span><span class="s">&quot;RobotOS&quot;</span><span class="p">)</span>
+<span class="n">using</span> <span class="n">RobotOS</span>
+</pre></div>
+
+
+<p><a id='Contributing-1'></a></p>
+<h3 id="contributing">Contributing</h3>
+<p>The package will hopefully continue to undergo substantial improvement. Please feel free to submit either an issue or pull request through github if you want to fix something or suggest a needed improvment, even if it's just to add an extra sentence in this README.</p>
+<p><a id='Testing-1'></a></p>
+<h4 id="testing">Testing</h4>
+<p>Currently, <code>Pkg.test("RobotOS")</code> requires some bootstrapping to work properly. Before running Julia, make sure a ROS master is running and start the helper node by running the <code>test/echonode.py</code> file.</p>
+<p><a id='Usage:-Type-Generation-1'></a></p>
+<h2 id="usage-type-generation">Usage: Type Generation</h2>
+<p>ROS types are brought into your program with the <code>@rosimport</code> macro which specifies a package and one or more types. The three valid syntax forms can be seen in these examples:</p>
+<div class="codehilite"><pre><span class="err">@</span><span class="n">rosimport</span> <span class="n">std_msgs</span><span class="p">.</span><span class="n">msg</span><span class="p">.</span><span class="n">Header</span>
+<span class="err">@</span><span class="n">rosimport</span> <span class="n">nav_msgs</span><span class="p">.</span><span class="n">srv</span><span class="o">:</span> <span class="n">GetPlan</span>
+<span class="err">@</span><span class="n">rosimport</span> <span class="n">geometry_msgs</span><span class="p">.</span><span class="n">msg</span><span class="o">:</span> <span class="n">PoseStamped</span><span class="p">,</span> <span class="n">Vector3</span>
+</pre></div>
+
+
+<p><code>@rosimport</code> will import the python modules for the requested type and all its dependencies but the native Julia types are not created yet since any inter-module dependencies have to be resolved first. After the final <code>@rosimport</code> call, initiate the type generation with:</p>
+<div class="codehilite"><pre><span class="n">rostypegen</span><span class="p">()</span>
+</pre></div>
+
+
+<p>The new types will be placed in newly created modules in <code>Main</code>, corresponding to the packages requested. For example, <code>"std_msgs/Header" =&gt; std_msgs.msg.Header</code>. After calling <code>rostypegen()</code> they can be interacted with just like regular modules with <code>import</code> and <code>using</code> statements bringing the generated type names into the local namespace.</p>
+<div class="codehilite"><pre><span class="n">using</span> <span class="n">nav_msgs</span><span class="p">.</span><span class="n">msg</span>
+<span class="n">import</span> <span class="n">geometry_msgs</span><span class="p">.</span><span class="n">msg</span><span class="o">:</span> <span class="n">Pose</span><span class="p">,</span> <span class="n">Vector3</span>
+<span class="n">p</span> <span class="o">=</span> <span class="n">Path</span><span class="p">()</span>
+<span class="n">v</span> <span class="o">=</span> <span class="n">Vector3</span><span class="p">(</span><span class="mf">1.1</span><span class="p">,</span><span class="mf">2.2</span><span class="p">,</span><span class="mf">3.3</span><span class="p">)</span>
+</pre></div>
+
+
+<p>There is one special case, where the ROS type name conflicts with a built-in Julia type name (e.g., <code>std_msgs/Float64</code> or <code>std_msgs/String</code>). In these cases, the generated Julia type will have "Msg" appended to the name for disambiguation (e.g., <code>std_msgs.msg.Float64Msg</code> and <code>std_msgs.msg.StringMsg</code>).</p>
+<p>An additional function, <code>rostypereset()</code>, resets the type generation process, possibly useful for development in the REPL. When invoked, new <code>@rosimport</code> calls will be needed to generate the same or different types, and previously generated modules will be overwritten after <code>rostypegen()</code> is called again.  Keep in mind that names cannot be cleared once defined so if a module is not regenerated, the first version will remain.</p>
+<p><a id='Usage:-ROS-API-1'></a></p>
+<h2 id="usage-ros-api">Usage: ROS API</h2>
+<p>In general, the API functions provided directly match those provided in rospy, with few cosmetic differences. The rospy API functions can reviewed here: <a href="http://wiki.ros.org/rospy/Overview">http://wiki.ros.org/rospy/Overview</a></p>
+<p><a id='General-Functions-1'></a></p>
+<h3 id="general-functions">General Functions</h3>
+<ul>
+<li><code>init_node(name::String; kwargs...)</code> : Initialize node. Passes keyword</li>
+</ul>
+<p>arguments on to rospy directly. (Required)</p>
+<ul>
+<li><code>is_shutdown()</code> : Check for ROS shutdown state.</li>
+<li><code>spin()</code> :  Wait for callbacks until shutdown happens.</li>
+<li><code>logdebug</code>,<code>loginfo</code>,<code>logwarn</code>,<code>logerr</code>,<code>logfatal</code> all work as in rospy.</li>
+</ul>
+<p><a id='Time-1'></a></p>
+<h3 id="time">Time</h3>
+<p>Native Julia types <code>Time</code> and <code>Duration</code> are defined, both as a composite of an integral number of seconds and nanoseconds, as in rospy.  Arithmetic and comparison operators are also defined. A <code>Rate</code> type is defined as a wrapper for the rospy Rate, which keeps loops running on a near fixed time interval. It can be constructed with a <code>Duration</code> object, or a floating-point value, specifying the loop rate in Hz. Other functions are:</p>
+<ul>
+<li><code>get_rostime()</code>, <code>RobotOS.now()</code> : Current time as <code>Time</code> object.</li>
+<li><code>to_sec(time_obj)</code>, <code>convert(Float64, time_obj)</code> : Convert <code>Time</code> or</li>
+</ul>
+<p><code>Duration</code> object to floating-point number of seconds.</p>
+<ul>
+<li><code>to_nsec(time_obj)</code> : Convert object to integral number of nanoseconds.</li>
+<li><code>rossleep(t)</code> with <code>t</code> of type <code>Duration</code>, <code>Rate</code>, <code>Real</code>. Also</li>
+</ul>
+<p><code>sleep(t::Duration)</code> and <code>sleep(t::Rate)</code> : Sleep the amount implied by type and value of the <code>t</code> parameter.</p>
+<p><a id='Publishing-Messages-1'></a></p>
+<h3 id="publishing-messages">Publishing Messages</h3>
+<p>Publishing messages is the same as in rospy, except use the <code>publish</code> method, paired with a Publisher object. For example:</p>
+<div class="codehilite"><pre><span class="n">using</span> <span class="n">geometry_msgs</span><span class="p">.</span><span class="n">msg</span>
+<span class="n">pub</span> <span class="o">=</span> <span class="n">Publisher</span><span class="p">{</span><span class="n">PointStamped</span><span class="p">}(</span><span class="s">&quot;topic&quot;</span><span class="p">,</span> <span class="n">queue_size</span> <span class="o">=</span> <span class="mi">10</span><span class="p">)</span> <span class="err">#</span><span class="n">or</span><span class="p">...</span>
+<span class="cp">#pub = Publisher(&quot;topic&quot;, PointStamped, queue_size = 10)</span>
+<span class="n">msg</span> <span class="o">=</span> <span class="n">PointStamped</span><span class="p">()</span>
+<span class="n">msg</span><span class="p">.</span><span class="n">header</span><span class="p">.</span><span class="n">stamp</span> <span class="o">=</span> <span class="n">now</span><span class="p">()</span>
+<span class="n">msg</span><span class="p">.</span><span class="n">point</span><span class="p">.</span><span class="n">x</span> <span class="o">=</span> <span class="mf">1.1</span>
+<span class="n">publish</span><span class="p">(</span><span class="n">pub</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span>
+</pre></div>
+
+
+<p>The keyword arguments in the <code>Publisher</code> constructor are passed directly on to rospy so anything it accepts will be valid.</p>
+<p><a id='Subscribing-to-a-Topic-1'></a></p>
+<h3 id="subscribing-to-a-topic">Subscribing to a Topic</h3>
+<p>Subscribing to a topic is the same as in rospy. When creating a <code>Subscriber</code>, an optional <code>callback_args</code> parameter can be given to forward on whenever the callback is invoked. Note that it must be passed as a tuple, even if there is only a single argument. And again, keyword arguments are directly forwarded. An example:</p>
+<div class="codehilite"><pre><span class="n">using</span> <span class="n">sensor_msgs</span><span class="p">.</span><span class="n">msg</span>
+<span class="n">cb1</span><span class="p">(</span><span class="n">msg</span><span class="o">::</span><span class="n">Imu</span><span class="p">,</span> <span class="n">a</span><span class="o">::</span><span class="n">String</span><span class="p">)</span> <span class="o">=</span> <span class="n">println</span><span class="p">(</span><span class="n">a</span><span class="p">,</span><span class="s">&quot;: &quot;</span><span class="p">,</span><span class="n">msg</span><span class="p">.</span><span class="n">linear_acceleration</span><span class="p">.</span><span class="n">x</span><span class="p">)</span>
+<span class="n">cb2</span><span class="p">(</span><span class="n">msg</span><span class="o">::</span><span class="n">Imu</span><span class="p">)</span> <span class="o">=</span> <span class="n">println</span><span class="p">(</span><span class="n">msg</span><span class="p">.</span><span class="n">angular_velocity</span><span class="p">.</span><span class="n">z</span><span class="p">)</span>
+<span class="n">sub1</span> <span class="o">=</span> <span class="n">Subscriber</span><span class="p">{</span><span class="n">Imu</span><span class="p">}(</span><span class="s">&quot;topic&quot;</span><span class="p">,</span> <span class="n">cb1</span><span class="p">,</span> <span class="p">(</span><span class="s">&quot;accel&quot;</span><span class="p">,),</span> <span class="n">queue_size</span> <span class="o">=</span> <span class="mi">10</span><span class="p">)</span> <span class="err">#</span><span class="n">or</span><span class="p">...</span>
+<span class="cp">#sub1 = Subscriber(&quot;topic&quot;, Imu, cb1, (&quot;accel&quot;,), queue_size = 10)</span>
+<span class="n">sub2</span> <span class="o">=</span> <span class="n">Subscriber</span><span class="p">{</span><span class="n">Imu</span><span class="p">}(</span><span class="s">&quot;topic&quot;</span><span class="p">,</span> <span class="n">cb2</span><span class="p">,</span> <span class="n">queue_size</span> <span class="o">=</span> <span class="mi">10</span><span class="p">)</span>
+<span class="n">spin</span><span class="p">()</span>
+</pre></div>
+
+
+<p><a id='Using-services-1'></a></p>
+<h3 id="using-services">Using services</h3>
+<p>ROS services are fully supported, including automatic request and response type generation. For the <code>@rosimport</code> call, use the plain service type name. After <code>rostypegen()</code>, the generated <code>.srv</code> submodule will contain 3 types: the plain type, a request type, and a response type. For example <code>@rosimport nav_msgs.srv.GetPlan</code> will create <code>GetPlan</code>, <code>GetPlanRequest</code>, and <code>GetPlanResponse</code>. To provide the service to other nodes, you would create a <code>Service{GetPlan}</code> object. To call it, a <code>ServiceProxy{GetPlan}</code> object. The syntax exactly matches rospy to construct and use these objects. For example, if <code>myproxy</code> is a <code>ServiceProxy</code> object, it can be called with <code>myproxy(my_request)</code>.</p>
+<p><a id='Parameter-Server-1'></a></p>
+<h3 id="parameter-server">Parameter Server</h3>
+<p><code>get_param</code>, <code>set_param</code>, <code>has_param</code>, and <code>delete_param</code> are all implemented in the <code>RobotOS</code> module with the same syntax as in rospy.</p>
+<p><a id='Message-Constants-1'></a></p>
+<h3 id="message-constants">Message Constants</h3>
+<p>Message constants may be accessed using <code>getindex</code> syntax. For example for <a href="http://docs.ros.org/api/visualization_msgs/html/msg/Marker.html">visualization_msgs/Marker.msg</a> we have:</p>
+<div class="codehilite"><pre><span class="n">import</span> <span class="n">visualization_msgs</span><span class="p">.</span><span class="n">msg</span><span class="o">:</span> <span class="n">Marker</span>
+<span class="n">Marker</span><span class="p">[</span><span class="o">:</span><span class="n">SPHERE</span><span class="p">]</span> <span class="o">==</span> <span class="n">getindex</span><span class="p">(</span><span class="n">Marker</span><span class="p">,</span> <span class="o">:</span><span class="n">SPHERE</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>   <span class="err">#</span> <span class="nb">true</span>
+</pre></div>
+
+
+<p><a id='ROS-Integration-1'></a></p>
+<h2 id="ros-integration">ROS Integration</h2>
+<p>Since Julia code needs no prior compilation, it is possible to integrate very tightly and natively with a larger ROS system. Just make sure you:</p>
+<ul>
+<li>Keep your code inside your ROS packages as usual.</li>
+<li>Ensure your .jl script is executable (e.g., <code>chmod a+x script.jl</code>) and has</li>
+</ul>
+<p>the hint to the Julia binary as the first line (<code>#!/usr/bin/env julia</code>).</p>
+<p>Now your Julia code will run exactly like any python script that gets invoked through <code>rosrun</code> or <code>roslaunch</code>. And since <code>include</code> takes paths relative to the location of the calling file, you can bring in whatever other modules or functions reside in your package from the single executable script.</p>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre>1
+2
+3
+4
+5
+6
+7</pre></div></td><td class="code"><div class="codehilite"><pre><span class="c">#!/usr/bin/env julia</span>
+<span class="c">#main.jl in thebot_pkg/src</span>
+<span class="k">using</span> <span class="n">RobotOS</span>
+
+<span class="n">include</span><span class="p">(</span><span class="s">&quot;BotSrc/Bot.jl&quot;</span><span class="p">)</span>
+<span class="k">using</span> <span class="n">Bot</span>
+<span class="c">#...</span>
+</pre></div>
+</td></tr></table>
+
+<p><a id='Full-example-1'></a></p>
+<h2 id="full-example">Full example</h2>
+<p>This example demonstrates publishing a random <code>geometry_msgs/Point</code> message at 5 Hz. It also listens for incoming <code>geometry_msgs/Pose2D</code> messages and republishes them as Points.</p>
+<table class="codehilitetable"><tr><td class="linenos"><div class="linenodiv"><pre> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31</pre></div></td><td class="code"><div class="codehilite"><pre><span class="c">#!/usr/bin/env julia</span>
+
+<span class="k">using</span> <span class="n">RobotOS</span>
+<span class="p">@</span><span class="n">rosimport</span> <span class="n">geometry_msgs</span><span class="o">.</span><span class="n">msg</span><span class="p">:</span> <span class="n">Point</span><span class="p">,</span> <span class="n">Pose2D</span>
+<span class="n">rostypegen</span><span class="p">()</span>
+<span class="k">using</span> <span class="n">geometry_msgs</span><span class="o">.</span><span class="n">msg</span>
+
+<span class="k">function</span><span class="nf"> callback</span><span class="p">(</span><span class="n">msg</span><span class="p">::</span><span class="n">Pose2D</span><span class="p">,</span> <span class="n">pub_obj</span><span class="p">::</span><span class="n">Publisher</span><span class="p">{</span><span class="n">Point</span><span class="p">})</span>
+    <span class="n">pt_msg</span> <span class="o">=</span> <span class="n">Point</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="n">msg</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">publish</span><span class="p">(</span><span class="n">pub_obj</span><span class="p">,</span> <span class="n">pt_msg</span><span class="p">)</span>
+<span class="k">end</span>
+
+<span class="k">function</span><span class="nf"> loop</span><span class="p">(</span><span class="n">pub_obj</span><span class="p">)</span>
+    <span class="n">loop_rate</span> <span class="o">=</span> <span class="n">Rate</span><span class="p">(</span><span class="mf">5.0</span><span class="p">)</span>
+    <span class="k">while</span> <span class="o">!</span> <span class="n">is_shutdown</span><span class="p">()</span>
+        <span class="n">npt</span> <span class="o">=</span> <span class="n">Point</span><span class="p">(</span><span class="n">rand</span><span class="p">(),</span> <span class="n">rand</span><span class="p">(),</span> <span class="mf">0.0</span><span class="p">)</span>
+        <span class="n">publish</span><span class="p">(</span><span class="n">pub_obj</span><span class="p">,</span> <span class="n">npt</span><span class="p">)</span>
+        <span class="n">rossleep</span><span class="p">(</span><span class="n">loop_rate</span><span class="p">)</span>
+    <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="k">function</span><span class="nf"> main</span><span class="p">()</span>
+    <span class="n">init_node</span><span class="p">(</span><span class="s">&quot;rosjl_example&quot;</span><span class="p">)</span>
+    <span class="n">pub</span> <span class="o">=</span> <span class="n">Publisher</span><span class="p">{</span><span class="n">Point</span><span class="p">}(</span><span class="s">&quot;pts&quot;</span><span class="p">,</span> <span class="n">queue_size</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="n">sub</span> <span class="o">=</span> <span class="n">Subscriber</span><span class="p">{</span><span class="n">Pose2D</span><span class="p">}(</span><span class="s">&quot;pose&quot;</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="p">(</span><span class="n">pub</span><span class="p">,),</span> <span class="n">queue_size</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+    <span class="n">loop</span><span class="p">(</span><span class="n">pub</span><span class="p">)</span>
+<span class="k">end</span>
+
+<span class="k">if</span> <span class="o">!</span> <span class="n">isinteractive</span><span class="p">()</span>
+    <span class="n">main</span><span class="p">()</span>
+<span class="k">end</span>
+</pre></div>
+</td></tr></table>
+
+<p><a id='Versions-1'></a></p>
+<h2 id="versions">Versions</h2>
+<ul>
+<li><code>0.1</code> : Initial release</li>
+<li><code>0.2</code> : Changed type gen API and moved generated modules to Main</li>
+<li><code>0.3</code> : Added service type generation and API</li>
+<li><code>0.4</code> : Julia v0.4+ support only</li>
+</ul></div>
+        </div>
+
+        <footer class="col-md-12">
+            <hr>
+            <p>Documentation built with <a href="http://www.mkdocs.org/">MkDocs</a>.</p>
+        </footer>
+        <script>var base_url = '.';</script>
+        <script src="./js/base.js"></script>
+        <script src="./assets/mathjaxhelper.js"></script>
+        <script src="./search/require.js"></script>
+        <script src="./search/search.js"></script>
+
+        <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="Search Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Search</h4>
+            </div>
+            <div class="modal-body">
+                <p>
+                    From here you can search these documents. Enter
+                    your search terms below.
+                </p>
+                <form role="form">
+                    <div class="form-group">
+                        <input type="text" class="form-control" placeholder="Search..." id="mkdocs-search-query">
+                    </div>
+                </form>
+                <div id="mkdocs-search-results"></div>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div><div class="modal" id="mkdocs_keyboard_modal" tabindex="-1" role="dialog" aria-labelledby="Keyboard Shortcuts Modal" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                <h4 class="modal-title" id="exampleModalLabel">Keyboard Shortcuts</h4>
+            </div>
+            <div class="modal-body">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Keys</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><kbd>?</kbd></td>
+                    <td>Open this help</td>
+                  </tr>
+                  <tr>
+                    <td><kbd>&larr;</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td><kbd>&rarr;</kbd></td>
+                    <td>Next page</td>
+                  </tr>
+                  <tr>
+                    <td><kbd>s</kbd></td>
+                    <td>Search</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="modal-footer">
+            </div>
+        </div>
+    </div>
+</div>
+
+
+    </body>
+</html>
+
+<!--
+MkDocs version : 0.17.0
+Build Date UTC : 2017-10-30 18:52:41
+-->
