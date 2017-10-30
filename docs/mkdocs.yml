@@ -1,8 +1,8 @@
 site_name:           RobotOS.jl
 repo_url:            https://github.com/jdlangs/RobotOS.jl
-site_description:    Description
+site_description:    Julia client library for ROS
 site_author:         Josh Langsfeld
-theme:               readthedocs
+theme:               mkdocs
 
 markdown_extensions:
   - codehilite
@@ -22,3 +22,4 @@ docs_dir: 'build'
 
 pages:
 - Introduction: index.md
+- API Reference: api.md

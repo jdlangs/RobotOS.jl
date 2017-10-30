@@ -14,7 +14,7 @@ export Time, Duration, Rate, to_sec, to_nsec, get_rostime, rossleep
 Object representing an absolute time from a fixed past reference point at nanosecond precision.
 
 Basic arithmetic can be performed on combinations of `Time` and `Duration` objects that make sense.
-For example, if `t::Time` and `d::Duration`, `t+d` will be a `Time`, `d+d` a Duration`, `t-d` a
+For example, if `t::Time` and `d::Duration`, `t+d` will be a `Time`, `d+d` a `Duration`, `t-d` a
 `Time`, `d-d` a `Duration`, and `t-t` a `Duration`.
 """
 immutable Time <: TVal
