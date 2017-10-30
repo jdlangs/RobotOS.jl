@@ -1,13 +1,16 @@
 using Documenter,RobotOS
-makedocs(modules=[RobotOS],
-        doctest=false, clean=true,
-        format =:html,
-        authors="Josh Langsfeld",
-        sitename="RobotOS.jl",
-        pages = Any[
+
+makedocs(
+    modules=[RobotOS],
+    doctest=false, clean=true,
+    format =:html,
+    authors="Josh Langsfeld",
+    sitename="RobotOS.jl",
+    pages = Any[
         "Home" => "index.md"
-               ]
-               )
+        "API Reference" => "api.md"
+        ]
+    )
 
 deploydocs(
     deps=Deps.pip("mkdocs","python-markdown-math"),
@@ -17,4 +20,4 @@ deploydocs(
     target="build",
     osname="linux",
     julia="0.6",
-    make=nothing)
+    )
