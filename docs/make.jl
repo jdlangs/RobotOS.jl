@@ -13,5 +13,4 @@ deploydocs(
     osname="linux",
     julia="0.6",
     deps=Deps.pip("mkdocs"),
-    make="mkdocs build",
     )
