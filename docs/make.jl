@@ -1,0 +1,23 @@
+using Documenter,RobotOS
+
+makedocs(
+    modules=[RobotOS],
+    doctest=false, clean=true,
+    format =:html,
+    authors="Josh Langsfeld",
+    sitename="RobotOS.jl",
+    pages = Any[
+        "Home" => "index.md"
+        "API Reference" => "api.md"
+        ]
+    )
+
+deploydocs(
+    deps=Deps.pip("mkdocs","python-markdown-math"),
+    repo="github.com/jdlangs/RobotOS.jl",
+    branch = "gh-pages",
+    latest = "master",
+    target="build",
+    osname="linux",
+    julia="0.6",
+    )
