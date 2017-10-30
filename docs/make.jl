@@ -6,11 +6,12 @@ makedocs(
     )
 
 deploydocs(
-    deps=Deps.pip("mkdocs"),
+    target="site",
     repo="github.com/jdlangs/RobotOS.jl",
     branch = "gh-pages",
     latest = "master",
-    target="build",
     osname="linux",
-    julia="0.6",
+    julia="nightly",
+    deps=Deps.pip("mkdocs"),
+    make="mkdocs build",
     )
