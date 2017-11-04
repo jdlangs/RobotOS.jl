@@ -1,11 +1,9 @@
-using Base.Test
+using Compat.Test
 using PyCall
 using RobotOS
-using Compat
 RobotOS.debug(true)
 
-#Generally, later tests rely on things defined in previous tests, so the order
-#is important
+#Generally, later tests rely on things defined in previous tests, so the order is important
 include("rospy.jl")
 include("time.jl")
 include("typegeneration.jl")

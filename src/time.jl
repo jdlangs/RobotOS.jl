@@ -1,12 +1,10 @@
 #All time related types and functions
 
-using Compat
-
 import Base: convert, isless, sleep, +, -, *, ==
 export Time, Duration, Rate, to_sec, to_nsec, get_rostime, rossleep
 
 #Time type definitions
-@compat abstract type TVal end
+abstract type AbstractTime end
 
 """
     Time(secs, nsecs), Time(), Time(t::Real)
@@ -17,7 +15,7 @@ Basic arithmetic can be performed on combinations of `Time` and `Duration` objec
 For example, if `t::Time` and `d::Duration`, `t+d` will be a `Time`, `d+d` a `Duration`, `t-d` a
 `Time`, `d-d` a `Duration`, and `t-t` a `Duration`.
 """
-immutable Time <: TVal
+struct Time <: AbstractTime
     secs::Int32
     nsecs::Int32
     function Time(s::Real,n::Real)
@@ -37,7 +35,7 @@ Basic arithmetic can be performed on combinations of `Time` and `Duration` objec
 For example, if `t::Time` and `d::Duration`, `t+d` will be a `Time`, `d+d` a `Duration`, `t-d` a
 `Time`, `d-d` a `Duration`, and `t-t` a `Duration`.
 """
-immutable Duration <: TVal
+struct Duration <: AbstractTime
     secs::Int32
     nsecs::Int32
     function Duration(s::Real,n::Real)
@@ -84,19 +82,19 @@ convert(::Type{PyObject}, t::Duration) = __rospy__[:Duration](t.secs,t.nsecs)
 
 Return the value of a ROS time object in absolute seconds (with nanosecond precision)
 """
-to_sec{T<:TVal}(t::T) = t.secs + 1e-9*t.nsecs
+to_sec(t::T) where {T <: AbstractTime} = t.secs + 1e-9*t.nsecs
 
 """
     to_nsec(t)
 
 Return the value of a ROS time object in nanoseconds as an integer.
 """
-to_nsec{T<:TVal}(t::T) = 1_000_000_000*t.secs + t.nsecs
-convert{T<:TVal}(::Type{Float64}, t::T) = to_sec(t)
+to_nsec(t::T) where {T <: AbstractTime} = 1_000_000_000*t.secs + t.nsecs
+convert(::Type{Float64}, t::T) where {T <: AbstractTime} = to_sec(t)
 
 #Comparisons
-=={T<:TVal}(t1::T, t2::T) = (t1.secs == t2.secs) && (t1.nsecs == t2.nsecs)
-isless{T<:TVal}(t1::T, t2::T) = to_nsec(t1) < to_nsec(t2)
+==(t1::T, t2::T) where {T <: AbstractTime} = (t1.secs == t2.secs) && (t1.nsecs == t2.nsecs)
+isless(t1::T, t2::T) where {T <: AbstractTime} = to_nsec(t1) < to_nsec(t2)
 
 """
     Rate(hz::Real), Rate(d::Duration)
@@ -105,7 +103,7 @@ Used to allow a loop to run at a fixed rate. Construct with a frequency or `Dura
 `rossleep` or `sleep`. The rate object will record execution time of other work in the loop and
 modify the sleep time to compensate, keeping the loop rate as consistent as possible.
 """
-type Rate
+mutable struct Rate
     duration::Duration
     last_time::Time
 end

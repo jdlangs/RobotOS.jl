@@ -1,6 +1,5 @@
 #Tests of proper type generation
 using PyCall
-using Compat
 
 @rosimport geometry_msgs.msg: PoseStamped, Vector3
 @rosimport visualization_msgs.msg: Marker
@@ -14,9 +13,9 @@ using Compat
 @test_throws ErrorException @rosimport nav_msgs.srv.GetPlanRequest
 rostypegen()
 
-@test isdefined(:geometry_msgs)
-@test isdefined(:std_msgs)
-@test isdefined(:nav_msgs)
+@test isdefined(Main, :geometry_msgs)
+@test isdefined(Main, :std_msgs)
+@test isdefined(Main, :nav_msgs)
 @test isdefined(geometry_msgs.msg, :Point)
 @test isdefined(geometry_msgs.msg, :Quaternion)
 @test isdefined(geometry_msgs.msg, :Pose)

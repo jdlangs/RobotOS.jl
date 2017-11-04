@@ -1,8 +1,6 @@
 #API for calling/creating services. Syntax is practically identical to rospy.
 export Service, ServiceProxy, wait_for_service
 
-using Compat
-
 """
     ServiceProxy{T}(name; kwargs...)
     ServiceProxy(name, T; kwargs...)
@@ -10,25 +8,21 @@ using Compat
 Create a proxy object used to invoke a remote service. Use `srv_proxy(msg_request)` with the object
 to invoke the service call. Keyword arguments are directly passed to rospy.
 """
-type ServiceProxy{SrvType <: AbstractService}
+struct ServiceProxy{SrvType <: AbstractService}
     o::PyObject
 
-    @compat function (::Type{ServiceProxy{ST}}){ST <: AbstractService}(
-        name::AbstractString; kwargs...
-    )
+    function ServiceProxy{ST}(name::AbstractString; kwargs...) where ST <: AbstractService
         @debug("Creating <$ST> service proxy for '$name'")
         rospycls = _get_rospy_class(ST)
         new{ST}(__rospy__[:ServiceProxy](ascii(name), rospycls; kwargs...))
     end
 end
 
-function ServiceProxy{ST<:AbstractService}(name::AbstractString, srv::Type{ST}; kwargs...)
+function ServiceProxy(name::AbstractString, srv::Type{ST}; kwargs...) where ST <: AbstractService
     ServiceProxy{ST}(ascii(name); kwargs...)
 end
 
-@compat function (srv::ServiceProxy{ST}){ST <: AbstractService}(
-    req::AbstractSrv
-)
+function (srv::ServiceProxy{ST})(req::AbstractSrv) where ST <: AbstractService
     if ! isa(req, _srv_reqtype(ST))
         throw(ArgumentError(
             string("Incorrect service request type: ", typeof(req),
@@ -46,15 +40,13 @@ end
 Create a service object that can receive requests and provide responses. The callback can be of
 any callable type. Keyword arguments are directly passed to rospy.
 """
-type Service{SrvType <: AbstractService}
+mutable struct Service{SrvType <: AbstractService}
     handler
     srv_obj::PyObject
     cb_interface::PyObject
     async_loop::Task
 
-    @compat function (::Type{Service{ST}}){ST <: AbstractService}(
-        name::AbstractString, handler; kwargs...
-    )
+    function Service{ST}(name::AbstractString, handler; kwargs...) where ST <: AbstractService
         @debug("Providing <$ST> service at '$name'")
         rospycls = _get_rospy_class(ST)
 
@@ -81,7 +73,7 @@ type Service{SrvType <: AbstractService}
     end
 end
 
-function Service{ST<:AbstractService}(name::AbstractString, srv::Type{ST}, handler; kwargs...)
+function Service(name::AbstractString, srv::Type{ST}, handler; kwargs...) where ST <: AbstractService
     Service{ST}(ascii(name), handler; kwargs...)
 end
 

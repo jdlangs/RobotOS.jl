@@ -1,7 +1,5 @@
 #Generate Julia composite types for ROS messages
 
-using Compat
-import Compat: String, Symbol
 using PyCall
 
 export @rosimport, rostypegen, rostypereset
@@ -9,8 +7,8 @@ export @rosimport, rostypegen, rostypereset
 #Type definitions
 #Composite types for internal use. Keeps track of the imported types and helps
 #keep code generation orderly.
-@compat abstract type ROSModule end
-type ROSPackage
+abstract type ROSModule end
+mutable struct ROSPackage
     name::String
     msg::ROSModule
     srv::ROSModule
@@ -21,13 +19,13 @@ type ROSPackage
         pkg
     end
 end
-type ROSMsgModule <: ROSModule
+struct ROSMsgModule <: ROSModule
     pkg::ROSPackage
     members::Vector{String}
     deps::Set{String}
     ROSMsgModule(pkg) = new(pkg, String[], Set{String}())
 end
-type ROSSrvModule <: ROSModule
+struct ROSSrvModule <: ROSModule
     pkg::ROSPackage
     members::Vector{String}
     deps::Set{String}
@@ -62,9 +60,9 @@ const _ros_builtin_types = Dict{String, Symbol}(
     )
 
 #Abstract supertypes of all generated types
-@compat abstract type AbstractMsg end
-@compat abstract type AbstractSrv end
-@compat abstract type AbstractService end
+abstract type AbstractMsg end
+abstract type AbstractSrv end
+abstract type AbstractService end
 
 """
     @rosimport
@@ -103,6 +101,7 @@ end
 
 _get_quote_value(input::QuoteNode) = input.value
 _get_quote_value(input::Expr) = (@assert input.head == :quote; input.args[1])
+
 #Return the pkg and types strings for a single expression of form:
 #  pkg.[msg|srv].type or pkg.[msg|srv]:type
 function _pkgtype_import(input::Expr)
@@ -316,8 +315,6 @@ function modulecode(mod::ROSModule)
     #Common imports
     push!(modcode,
         quote
-            using Compat
-            import Compat: String, Symbol
             using PyCall
             import Base: convert, getindex
             import RobotOS
@@ -417,7 +414,7 @@ function buildtype(mod::ROSSrvModule, typename::String)
     reqsym = Symbol(string(typename,"Request"))
     respsym = Symbol(string(typename,"Response"))
     srvexprs = Expr[
-        :(immutable $defsym <: AbstractService end),
+        :(struct $defsym <: AbstractService end),
         :(_typerepr(::Type{$defsym}) = $(_rostypestr(mod,typename))),
         :(_srv_reqtype(::Type{$defsym}) = $reqsym),
         :(_srv_resptype(::Type{$defsym}) = $respsym),
@@ -447,7 +444,7 @@ function typecode(rosname::String, super::Symbol, members::Vector)
     #First the empty expressions
     #(1) Type declaration
     push!(exprs, :(
-        type $jlsym <: $super
+        mutable struct $jlsym <: $super
             #Generated code here
         end
     ))
@@ -473,7 +470,7 @@ function typecode(rosname::String, super::Symbol, members::Vector)
     push!(exprs, :(
         function convert(jlt::Type{$jlsym}, o::PyObject)
             if convert(String, o["_type"]) != _typerepr(jlt)
-                throw(InexactError())
+                throw(InexactError(:convert, $jlsym, o))
             end
             jl = $jlsym()
             #Generated code here
@@ -557,7 +554,7 @@ end
 
 #Build a String => Iterable{String} object from the individual package
 #dependencies.
-function _collectdeps{S<:AbstractString}(pkgs::Dict{S, ROSPackage})
+function _collectdeps(pkgs::Dict{S, ROSPackage}) where S <: AbstractString
     deps = Dict{S, Set{S}}()
     for pname in keys(pkgs)
         if ! haskey(deps, pname)
@@ -654,18 +651,18 @@ _jl_safe_name(name::AbstractString, suffix) = _nameconflicts(name) ?
 _nameconflicts(typename::String) = isdefined(Base, Symbol(typename))
 
 #Get a default value for any builtin ROS type
-_typedefault{T<:Real}(::Type{T}) = zero(T)
+_typedefault(::Type{T}) where {T <: Real} = zero(T)
 _typedefault(::Type{String}) = ""
 _typedefault(::Type{Time}) = Time(0,0)
 _typedefault(::Type{Duration}) = Duration(0,0)
 
 #Default method to get the "pkg/type" string from a generated DataType.
 #Extended by the generated modules.
-_typerepr{T}(::Type{T}) = error("Not a ROS type")
+_typerepr(::Type{T}) where {T} = error("Not a ROS type")
 
 #Default method to get the request/response datatypes for a generated service
-_srv_reqtype{T}( ::Type{T}) = error("Not a ROS Service type")
-_srv_resptype{T}(::Type{T}) = error("Not a ROS Service type")
+_srv_reqtype( ::Type{T}) where {T} = error("Not a ROS Service type")
+_srv_resptype(::Type{T}) where {T} = error("Not a ROS Service type")
 
 #Accessors for the package name
 _name(p::ROSPackage) = p.name
