@@ -18,7 +18,7 @@ const ros_pub = Publisher("vectors", Vector3, queue_size = 10)
 rossleep(Duration(3.0))
 
 function publish_messages(pubobj, msgs, rate_hz)
-    const r = Rate(rate_hz)
+    r = Rate(rate_hz)
     for msg in msgs
         publish(pubobj, msg)
         rossleep(r)
