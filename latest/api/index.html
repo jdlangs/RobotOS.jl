@@ -111,7 +111,7 @@
 </pre></div>
 
 
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/gentypes.jl#L69-L81' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/gentypes.jl#L67-L79' class='documenter-source'>source</a><br></p>
 <p><a id='RobotOS.rostypegen' href='#RobotOS.rostypegen'>#</a>
 <strong><code>RobotOS.rostypegen</code></strong> &mdash; <em>Function</em>.</p>
 <div class="codehilite"><pre><span class="n">rostypegen</span><span class="p">()</span>
@@ -119,7 +119,7 @@
 
 
 <p>Initiate the Julia type generation process after importing some ROS types. Creates modules in <code>Main</code> with the same behavior as imported ROS modules in python. Should only be called once, after all <code>@rosimport</code> statements are done.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/gentypes.jl#L146-L152' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/gentypes.jl#L145-L151' class='documenter-source'>source</a><br></p>
 <p><a id='RobotOS.rostypereset' href='#RobotOS.rostypereset'>#</a>
 <strong><code>RobotOS.rostypereset</code></strong> &mdash; <em>Function</em>.</p>
 <div class="codehilite"><pre><span class="n">rostypereset</span><span class="p">()</span>
@@ -127,7 +127,7 @@
 
 
 <p>Clear out the previous <code>@rosimport</code>s, returning the type generation to its original state. Cannot do anything about already generated modules in <code>Main</code>.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/gentypes.jl#L162-L167' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/gentypes.jl#L161-L166' class='documenter-source'>source</a><br></p>
 <p><a id='Publishing-and-Subscribing-1'></a></p>
 <h2 id="publishing-and-subscribing">Publishing and Subscribing</h2>
 <p><a id='RobotOS.Publisher' href='#RobotOS.Publisher'>#</a>
@@ -138,7 +138,7 @@
 
 
 <p>Create an object to publish messages of type <code>T</code> on a topic. Keyword arguments are directly passed to rospy.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/pubsub.jl#L6-L12' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/pubsub.jl#L4-L10' class='documenter-source'>source</a><br></p>
 <p><a id='RobotOS.publish' href='#RobotOS.publish'>#</a>
 <strong><code>RobotOS.publish</code></strong> &mdash; <em>Function</em>.</p>
 <div class="codehilite"><pre><span class="n">publish</span><span class="p">(</span><span class="n">p</span><span class="o">::</span><span class="n">Publisher</span><span class="p">{</span><span class="n">T</span><span class="p">},</span> <span class="n">msg</span><span class="o">::</span><span class="n">T</span><span class="p">)</span>
@@ -146,7 +146,7 @@
 
 
 <p>Publish <code>msg</code> on <code>p</code>, a <code>Publisher</code> with matching message type.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/pubsub.jl#L26-L30' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/pubsub.jl#L24-L28' class='documenter-source'>source</a><br></p>
 <p><a id='RobotOS.Subscriber' href='#RobotOS.Subscriber'>#</a>
 <strong><code>RobotOS.Subscriber</code></strong> &mdash; <em>Type</em>.</p>
 <div class="codehilite"><pre><span class="n">Subscriber</span><span class="p">{</span><span class="n">T</span><span class="p">}(</span><span class="n">topic</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">cb_args</span><span class="o">=</span><span class="p">();</span> <span class="n">kwargs</span><span class="p">...)</span>
@@ -155,7 +155,7 @@
 
 
 <p>Create a subscription to a topic with message type <code>T</code> with a callback to use when a message is received, which can be any callable type. Extra arguments provided to the callback when invoked can be provided in the <code>cb_args</code> tuple. Keyword arguments are directly passed to rospy.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/pubsub.jl#L35-L42' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/pubsub.jl#L33-L40' class='documenter-source'>source</a><br></p>
 <p><a id='Services-1'></a></p>
 <h2 id="services">Services</h2>
 <p><a id='RobotOS.Service' href='#RobotOS.Service'>#</a>
@@ -166,7 +166,7 @@
 
 
 <p>Create a service object that can receive requests and provide responses. The callback can be of any callable type. Keyword arguments are directly passed to rospy.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/services.jl#L42-L48' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/services.jl#L36-L42' class='documenter-source'>source</a><br></p>
 <p><a id='RobotOS.ServiceProxy' href='#RobotOS.ServiceProxy'>#</a>
 <strong><code>RobotOS.ServiceProxy</code></strong> &mdash; <em>Type</em>.</p>
 <div class="codehilite"><pre><span class="n">ServiceProxy</span><span class="p">{</span><span class="n">T</span><span class="p">}(</span><span class="n">name</span><span class="p">;</span> <span class="n">kwargs</span><span class="p">...)</span>
@@ -175,7 +175,7 @@
 
 
 <p>Create a proxy object used to invoke a remote service. Use <code>srv_proxy(msg_request)</code> with the object to invoke the service call. Keyword arguments are directly passed to rospy.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/services.jl#L6-L12' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/services.jl#L4-L10' class='documenter-source'>source</a><br></p>
 <p><a id='RobotOS.wait_for_service' href='#RobotOS.wait_for_service'>#</a>
 <strong><code>RobotOS.wait_for_service</code></strong> &mdash; <em>Function</em>.</p>
 <div class="codehilite"><pre><span class="n">wait_for_service</span><span class="p">(</span><span class="n">srv_name</span><span class="p">;</span> <span class="n">kwargs</span><span class="p">...)</span>
@@ -183,7 +183,7 @@
 
 
 <p>Block until the specified service is available. Keyword arguments are directly passed to rospy. Throws an exception if the waiting timeout period is exceeded.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/services.jl#L88-L93' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/services.jl#L80-L85' class='documenter-source'>source</a><br></p>
 <p><a id='General-ROS-Functions-1'></a></p>
 <h2 id="general-ros-functions">General ROS Functions</h2>
 <p><a id='RobotOS.init_node' href='#RobotOS.init_node'>#</a>
@@ -193,7 +193,7 @@
 
 
 <p>Initialize this node, registering it with the ROS master. All arguments are passed on directly to the rospy init_node function.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/rospy.jl#L6-L11' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/rospy.jl#L6-L11' class='documenter-source'>source</a><br></p>
 <p><a id='RobotOS.is_shutdown' href='#RobotOS.is_shutdown'>#</a>
 <strong><code>RobotOS.is_shutdown</code></strong> &mdash; <em>Function</em>.</p>
 <div class="codehilite"><pre><span class="n">is_shutdown</span><span class="p">()</span>
@@ -201,7 +201,7 @@
 
 
 <p>Return the shutdown status of the node.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/rospy.jl#L15-L19' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/rospy.jl#L15-L19' class='documenter-source'>source</a><br></p>
 <p><a id='RobotOS.spin' href='#RobotOS.spin'>#</a>
 <strong><code>RobotOS.spin</code></strong> &mdash; <em>Function</em>.</p>
 <div class="codehilite"><pre><span class="n">spin</span><span class="p">()</span>
@@ -209,7 +209,7 @@
 
 
 <p>Block execution and process callbacks/service calls until the node is shut down.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/rospy.jl#L25-L29' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/rospy.jl#L25-L29' class='documenter-source'>source</a><br></p>
 <p><a id='Time-Handling-1'></a></p>
 <h2 id="time-handling">Time Handling</h2>
 <p><a id='RobotOS.Time' href='#RobotOS.Time'>#</a>
@@ -220,7 +220,7 @@
 
 <p>Object representing an absolute time from a fixed past reference point at nanosecond precision.</p>
 <p>Basic arithmetic can be performed on combinations of <code>Time</code> and <code>Duration</code> objects that make sense. For example, if <code>t::Time</code> and <code>d::Duration</code>, <code>t+d</code> will be a <code>Time</code>, <code>d+d</code> a <code>Duration</code>, <code>t-d</code> a <code>Time</code>, <code>d-d</code> a <code>Duration</code>, and <code>t-t</code> a <code>Duration</code>.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/time.jl#L11-L19' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/time.jl#L9-L17' class='documenter-source'>source</a><br></p>
 <p><a id='RobotOS.Duration' href='#RobotOS.Duration'>#</a>
 <strong><code>RobotOS.Duration</code></strong> &mdash; <em>Type</em>.</p>
 <div class="codehilite"><pre><span class="n">Duration</span><span class="p">(</span><span class="n">secs</span><span class="p">,</span> <span class="n">nsecs</span><span class="p">),</span> <span class="n">Duration</span><span class="p">(),</span> <span class="n">Duration</span><span class="p">(</span><span class="n">t</span><span class="o">::</span><span class="n">Real</span><span class="p">)</span>
@@ -229,7 +229,7 @@
 
 <p>Object representing a relative period of time at nanosecond precision.</p>
 <p>Basic arithmetic can be performed on combinations of <code>Time</code> and <code>Duration</code> objects that make sense. For example, if <code>t::Time</code> and <code>d::Duration</code>, <code>t+d</code> will be a <code>Time</code>, <code>d+d</code> a <code>Duration</code>, <code>t-d</code> a <code>Time</code>, <code>d-d</code> a <code>Duration</code>, and <code>t-t</code> a <code>Duration</code>.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/time.jl#L31-L39' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/time.jl#L29-L37' class='documenter-source'>source</a><br></p>
 <p><a id='RobotOS.Rate' href='#RobotOS.Rate'>#</a>
 <strong><code>RobotOS.Rate</code></strong> &mdash; <em>Type</em>.</p>
 <div class="codehilite"><pre><span class="n">Rate</span><span class="p">(</span><span class="n">hz</span><span class="o">::</span><span class="n">Real</span><span class="p">),</span> <span class="n">Rate</span><span class="p">(</span><span class="n">d</span><span class="o">::</span><span class="n">Duration</span><span class="p">)</span>
@@ -237,7 +237,7 @@
 
 
 <p>Used to allow a loop to run at a fixed rate. Construct with a frequency or <code>Duration</code> and use with <code>rossleep</code> or <code>sleep</code>. The rate object will record execution time of other work in the loop and modify the sleep time to compensate, keeping the loop rate as consistent as possible.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/time.jl#L101-L107' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/time.jl#L99-L105' class='documenter-source'>source</a><br></p>
 <p><a id='RobotOS.to_sec' href='#RobotOS.to_sec'>#</a>
 <strong><code>RobotOS.to_sec</code></strong> &mdash; <em>Function</em>.</p>
 <div class="codehilite"><pre><span class="n">to_sec</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
@@ -245,7 +245,7 @@
 
 
 <p>Return the value of a ROS time object in absolute seconds (with nanosecond precision)</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/time.jl#L82-L86' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/time.jl#L80-L84' class='documenter-source'>source</a><br></p>
 <p><a id='RobotOS.to_nsec' href='#RobotOS.to_nsec'>#</a>
 <strong><code>RobotOS.to_nsec</code></strong> &mdash; <em>Function</em>.</p>
 <div class="codehilite"><pre><span class="n">to_nsec</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
@@ -253,7 +253,7 @@
 
 
 <p>Return the value of a ROS time object in nanoseconds as an integer.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/time.jl#L89-L93' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/time.jl#L87-L91' class='documenter-source'>source</a><br></p>
 <p><a id='RobotOS.now' href='#RobotOS.now'>#</a>
 <strong><code>RobotOS.now</code></strong> &mdash; <em>Function</em>.</p>
 <div class="codehilite"><pre><span class="n">RobotOS</span><span class="p">.</span><span class="n">now</span><span class="p">()</span>
@@ -261,7 +261,7 @@
 
 
 <p>Return the current ROS time as a <code>Time</code> object.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/time.jl#L129-L133' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/time.jl#L127-L131' class='documenter-source'>source</a><br></p>
 <p><a id='RobotOS.get_rostime' href='#RobotOS.get_rostime'>#</a>
 <strong><code>RobotOS.get_rostime</code></strong> &mdash; <em>Function</em>.</p>
 <div class="codehilite"><pre><span class="n">get_rostime</span><span class="p">()</span>
@@ -269,7 +269,7 @@
 
 
 <p>Return the current ROS time as a <code>Time</code> object.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/time.jl#L115-L119' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/time.jl#L113-L117' class='documenter-source'>source</a><br></p>
 <p><a id='RobotOS.rossleep' href='#RobotOS.rossleep'>#</a>
 <strong><code>RobotOS.rossleep</code></strong> &mdash; <em>Function</em>.</p>
 <div class="codehilite"><pre><span class="n">rossleep</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
@@ -277,7 +277,7 @@
 
 
 <p>Sleep and process callbacks for a number of seconds implied by the type and value of <code>t</code>, which may be a real-value, a <code>Duration</code> object, or a <code>Rate</code> object.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/time.jl#L136-L141' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/time.jl#L134-L139' class='documenter-source'>source</a><br></p>
 <p><a id='Base.sleep' href='#Base.sleep'>#</a>
 <strong><code>Base.sleep</code></strong> &mdash; <em>Function</em>.</p>
 <div class="codehilite"><pre><span class="n">sleep</span><span class="p">(</span><span class="n">t</span><span class="o">::</span><span class="n">Duration</span><span class="p">),</span> <span class="n">sleep</span><span class="p">(</span><span class="n">t</span><span class="o">::</span><span class="n">Rate</span><span class="p">)</span>
@@ -285,7 +285,7 @@
 
 
 <p>Call <code>rossleep</code> with a <code>Duration</code> or <code>Rate</code> object. Use <code>rossleep</code> to specify sleep time directly.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/time.jl#L167-L171' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/time.jl#L165-L169' class='documenter-source'>source</a><br></p>
 <p><a id='Parameters-1'></a></p>
 <h2 id="parameters">Parameters</h2>
 <p><a id='RobotOS.get_param' href='#RobotOS.get_param'>#</a>
@@ -295,7 +295,7 @@
 
 
 <p>Request the value of a parameter from the parameter server, with optional default value. If no default is given, throws a <code>KeyError</code> if the parameter cannot be found.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/rospy.jl#L39-L44' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/rospy.jl#L39-L44' class='documenter-source'>source</a><br></p>
 <p><a id='RobotOS.set_param' href='#RobotOS.set_param'>#</a>
 <strong><code>RobotOS.set_param</code></strong> &mdash; <em>Function</em>.</p>
 <div class="codehilite"><pre><span class="n">set_param</span><span class="p">(</span><span class="n">param_name</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
@@ -303,7 +303,7 @@
 
 
 <p>Set the value of a parameter on the parameter server.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/rospy.jl#L57-L61' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/rospy.jl#L57-L61' class='documenter-source'>source</a><br></p>
 <p><a id='RobotOS.has_param' href='#RobotOS.has_param'>#</a>
 <strong><code>RobotOS.has_param</code></strong> &mdash; <em>Function</em>.</p>
 <div class="codehilite"><pre><span class="n">has_param</span><span class="p">(</span><span class="n">param_name</span><span class="p">)</span>
@@ -311,7 +311,7 @@
 
 
 <p>Return a boolean specifying if a parameter exists on the parameter server.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/rospy.jl#L65-L69' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/rospy.jl#L65-L69' class='documenter-source'>source</a><br></p>
 <p><a id='RobotOS.delete_param' href='#RobotOS.delete_param'>#</a>
 <strong><code>RobotOS.delete_param</code></strong> &mdash; <em>Function</em>.</p>
 <div class="codehilite"><pre><span class="n">delete_param</span><span class="p">(</span><span class="n">param_name</span><span class="p">)</span>
@@ -319,7 +319,7 @@
 
 
 <p>Delete a parameter from the parameter server. Throws a <code>KeyError</code> if no such parameter exists.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/rospy.jl#L73-L77' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/rospy.jl#L73-L77' class='documenter-source'>source</a><br></p>
 <p><a id='Logging-1'></a></p>
 <h2 id="logging">Logging</h2>
 <p><a id='RobotOS.logdebug' href='#RobotOS.logdebug'>#</a>
@@ -329,7 +329,7 @@
 
 
 <p>Call the rospy logging system at the corresponding message level, passing a message and other arguments directly.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/rospy.jl#L98-L103' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/rospy.jl#L98-L103' class='documenter-source'>source</a><br></p>
 <p><a id='RobotOS.loginfo' href='#RobotOS.loginfo'>#</a>
 <strong><code>RobotOS.loginfo</code></strong> &mdash; <em>Function</em>.</p>
 <div class="codehilite"><pre><span class="n">logdebug</span><span class="p">,</span> <span class="n">loginfo</span><span class="p">,</span> <span class="n">logwarn</span><span class="p">,</span> <span class="n">logerr</span><span class="p">,</span> <span class="n">logfatal</span>
@@ -337,7 +337,7 @@
 
 
 <p>Call the rospy logging system at the corresponding message level, passing a message and other arguments directly.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/rospy.jl#L98-L103' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/rospy.jl#L98-L103' class='documenter-source'>source</a><br></p>
 <p><a id='RobotOS.logwarn' href='#RobotOS.logwarn'>#</a>
 <strong><code>RobotOS.logwarn</code></strong> &mdash; <em>Function</em>.</p>
 <div class="codehilite"><pre><span class="n">logdebug</span><span class="p">,</span> <span class="n">loginfo</span><span class="p">,</span> <span class="n">logwarn</span><span class="p">,</span> <span class="n">logerr</span><span class="p">,</span> <span class="n">logfatal</span>
@@ -345,7 +345,7 @@
 
 
 <p>Call the rospy logging system at the corresponding message level, passing a message and other arguments directly.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/rospy.jl#L98-L103' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/rospy.jl#L98-L103' class='documenter-source'>source</a><br></p>
 <p><a id='RobotOS.logerr' href='#RobotOS.logerr'>#</a>
 <strong><code>RobotOS.logerr</code></strong> &mdash; <em>Function</em>.</p>
 <div class="codehilite"><pre><span class="n">logdebug</span><span class="p">,</span> <span class="n">loginfo</span><span class="p">,</span> <span class="n">logwarn</span><span class="p">,</span> <span class="n">logerr</span><span class="p">,</span> <span class="n">logfatal</span>
@@ -353,7 +353,7 @@
 
 
 <p>Call the rospy logging system at the corresponding message level, passing a message and other arguments directly.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/rospy.jl#L98-L103' class='documenter-source'>source</a><br></p>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/rospy.jl#L98-L103' class='documenter-source'>source</a><br></p>
 <p><a id='RobotOS.logfatal' href='#RobotOS.logfatal'>#</a>
 <strong><code>RobotOS.logfatal</code></strong> &mdash; <em>Function</em>.</p>
 <div class="codehilite"><pre><span class="n">logdebug</span><span class="p">,</span> <span class="n">loginfo</span><span class="p">,</span> <span class="n">logwarn</span><span class="p">,</span> <span class="n">logerr</span><span class="p">,</span> <span class="n">logfatal</span>
@@ -361,7 +361,7 @@
 
 
 <p>Call the rospy logging system at the corresponding message level, passing a message and other arguments directly.</p>
-<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/ae7728474c072e135946c0db755692114d8a39ae/src/rospy.jl#L98-L103' class='documenter-source'>source</a><br></p></div>
+<p><a target='_blank' href='https://github.com/jdlangs/RobotOS.jl/blob/cabcf81e79e0ebbd838a2cb794c2722d0b0ca40e/src/rospy.jl#L98-L103' class='documenter-source'>source</a><br></p></div>
         </div>
 
         <footer class="col-md-12">
