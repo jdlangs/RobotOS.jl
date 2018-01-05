@@ -1,10 +1,12 @@
+using Compat: Nothing
+
 #This function will run in a new python thread created by rospy.
 #No julia allocation allowed.
-function _callback_notify(handle::Ptr{Void})
-    ccall(:uv_async_send, Cint, (Ptr{Void},), handle)
+function _callback_notify(handle::Ptr{Nothing})
+    ccall(:uv_async_send, Cint, (Ptr{Nothing},), handle)
 end
 
-const CB_NOTIFY_PTR = cfunction(_callback_notify, Cint, Tuple{Ptr{Void}})
+const CB_NOTIFY_PTR = cfunction(_callback_notify, Cint, Tuple{Ptr{Nothing}})
 
 function _callback_async_loop(rosobj, cond)
     @debug("Spinning up callback loop...")
