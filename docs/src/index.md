@@ -225,3 +225,4 @@ republishes them as Points.
 - `0.3` : Added service type generation and API
 - `0.4` : Julia v0.4+ support only
 - `0.5` : Docs website, Julia v0.5+ support only
+- `0.6` : Julia v0.6+ support only
