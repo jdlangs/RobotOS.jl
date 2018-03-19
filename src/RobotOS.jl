@@ -14,6 +14,7 @@ function __init__()
     copy!(_py_sys, pyimport("sys"))
     _py_sys["argv"] = ARGS
 
+    #Fill in empty PyObjects
     if ! (dirname(@__FILE__) in _py_sys["path"])
         unshift!(_py_sys["path"], dirname(@__FILE__))
     end
@@ -29,6 +30,9 @@ function __init__()
             rethrow(ex)
         end
     end
+
+    #Compile the callback notify function, see callbacks.jl
+    CB_NOTIFY_PTR[] = cfunction(_callback_notify, Cint, Tuple{Ptr{Void}})
 end
 
 include("debug.jl")

@@ -4,7 +4,9 @@ function _callback_notify(handle::Ptr{Void})
     ccall(:uv_async_send, Cint, (Ptr{Void},), handle)
 end
 
-const CB_NOTIFY_PTR = cfunction(_callback_notify, Cint, Tuple{Ptr{Void}})
+#The pointer to the compiled notify function. This can't be precompiled so it gets initialized in
+#the module __init__ function.
+const CB_NOTIFY_PTR = Ref{Ptr{Void}}()
 
 function _callback_async_loop(rosobj, cond)
     @debug("Spinning up callback loop...")
