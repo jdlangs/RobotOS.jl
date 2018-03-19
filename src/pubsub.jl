@@ -52,7 +52,7 @@ mutable struct Subscriber{MsgType<:AbstractMsg}
         rospycls = _get_rospy_class(MT)
 
         cond = Base.AsyncCondition()
-        mqueue = _py_ros_callbacks["MessageQueue"](CB_NOTIFY_PTR, cond.handle)
+        mqueue = _py_ros_callbacks["MessageQueue"](CB_NOTIFY_PTR[], cond.handle)
         subobj = __rospy__[:Subscriber](ascii(topic), rospycls, mqueue["storemsg"]; kwargs...)
 
         rosobj = new{MT}(cb, cb_args, subobj, mqueue)

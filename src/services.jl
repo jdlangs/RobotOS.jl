@@ -51,7 +51,7 @@ mutable struct Service{SrvType <: AbstractService}
         rospycls = _get_rospy_class(ST)
 
         cond = Base.AsyncCondition()
-        pysrv = _py_ros_callbacks["ServiceCallback"](CB_NOTIFY_PTR, cond.handle)
+        pysrv = _py_ros_callbacks["ServiceCallback"](CB_NOTIFY_PTR[], cond.handle)
 
         srvobj = try
             __rospy__[:Service](ascii(name), rospycls, pysrv["srv_cb"]; kwargs...)
