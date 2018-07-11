@@ -28,6 +28,16 @@ rostypegen()
 @test isdefined(nav_msgs.srv, :GetPlanRequest)
 @test isdefined(nav_msgs.srv, :GetPlanResponse)
 
+#type generation in a non-Main module
+module TestModule
+    using RobotOS
+    @rosimport std_msgs.msg: Float32
+    rostypegen(current_module())
+end
+@test !isdefined(std_msgs.msg, :Float32Msg)
+@test isdefined(TestModule, :std_msgs)
+@test isdefined(TestModule.std_msgs.msg, :Float32Msg)
+
 #message creation
 posestamp = geometry_msgs.msg.PoseStamped()
 @test typeof(posestamp.pose) == geometry_msgs.msg.Pose

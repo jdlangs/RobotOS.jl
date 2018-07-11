@@ -39,24 +39,24 @@ const _rospy_imports = Dict{String,ROSPackage}()
 const _rospy_objects = Dict{String,PyObject}()
 const _rospy_modules = Dict{String,PyObject}()
 
-const _ros_builtin_types = Dict{String, Symbol}(
-    "bool"    => :Bool,
-    "int8"    => :Int8,
-    "int16"   => :Int16,
-    "int32"   => :Int32,
-    "int64"   => :Int64,
-    "uint8"   => :UInt8,
-    "uint16"  => :UInt16,
-    "uint32"  => :UInt32,
-    "uint64"  => :UInt64,
-    "float32" => :Float32,
-    "float64" => :Float64,
-    "string"  => :String,
-    "time"    => :Time,
-    "duration"=> :Duration,
+const _ros_builtin_types = Dict{String,DataType}(
+    "bool"    => Bool,
+    "int8"    => Int8,
+    "int16"   => Int16,
+    "int32"   => Int32,
+    "int64"   => Int64,
+    "uint8"   => UInt8,
+    "uint16"  => UInt16,
+    "uint32"  => UInt32,
+    "uint64"  => UInt64,
+    "float32" => Float32,
+    "float64" => Float64,
+    "string"  => String,
+    "time"    => Time,
+    "duration"=> Duration,
     #Deprecated by ROS but supported here
-    "char"    => :UInt8,
-    "byte"    => :Int8,
+    "char"    => UInt8,
+    "byte"    => Int8,
     )
 
 #Abstract supertypes of all generated types
@@ -143,18 +143,18 @@ function _rosimport(package::String, ismsg::Bool, names::String...)
 end
 
 """
-    rostypegen()
+    rostypegen(rosrootmod::Module=Main)
 
-Initiate the Julia type generation process after importing some ROS types. Creates modules in `Main`
-with the same behavior as imported ROS modules in python. Should only be called once, after all
-`@rosimport` statements are done.
+Initiate the Julia type generation process after importing some ROS types. Creates modules in
+rootrosmod (default is `Main`) with the same behavior as imported ROS modules in python.
+Should only be called once, after all `@rosimport` statements are done.
 """
-function rostypegen()
+function rostypegen(rosrootmod::Module=Main)
     global _rospy_imports
     pkgdeps = _collectdeps(_rospy_imports)
     pkglist = _order(pkgdeps)
     for pkg in pkglist
-        buildpackage(_rospy_imports[pkg])
+        buildpackage(_rospy_imports[pkg], rosrootmod)
     end
 end
 
@@ -277,38 +277,38 @@ function _import_rospy_pkg(package::String)
 end
 
 #The function that creates and fills the generated top-level modules
-function buildpackage(pkg::ROSPackage)
+function buildpackage(pkg::ROSPackage, rosrootmod::Module=Main)
     @debug("Building package: ", _name(pkg))
 
     #Create the top-level module for the package in Main
     pkgsym = Symbol(_name(pkg))
-    pkgcode = Expr(:toplevel, :(module ($pkgsym) end))
-    Main.eval(pkgcode)
-    pkgmod = Main.eval(pkgsym)
+    pkgcode = :(module ($pkgsym) end)
 
     #Add msg and srv submodules if needed
     @debug_addindent
     if length(pkg.msg.members) > 0
         msgmod = :(module msg end)
-        msgcode = modulecode(pkg.msg)
+        msgcode = modulecode(pkg.msg, rosrootmod)
         for expr in msgcode
             push!(msgmod.args[3].args, expr)
         end
-        eval(pkgmod, msgmod)
+        push!(pkgcode.args[3].args, msgmod)
     end
     if length(pkg.srv.members) > 0
         srvmod = :(module srv end)
-        srvcode = modulecode(pkg.srv)
+        srvcode = modulecode(pkg.srv, rosrootmod)
         for expr in srvcode
             push!(srvmod.args[3].args, expr)
         end
-        eval(pkgmod, srvmod)
+        push!(pkgcode.args[3].args, srvmod)
     end
+    pkgcode = Expr(:toplevel, pkgcode)
+    rosrootmod.eval(pkgcode)
     @debug_subindent
 end
 
 #Generate all code for a .msg or .srv module
-function modulecode(mod::ROSModule)
+function modulecode(mod::ROSModule, rosrootmod::Module=Main)
     @debug("submodule: ", _fullname(mod))
     modcode = Expr[]
 
@@ -325,7 +325,7 @@ function modulecode(mod::ROSModule)
         end
     )
     #Import statement specific to the module
-    append!(modcode, _importexprs(mod))
+    append!(modcode, _importexprs(mod, rosrootmod))
     #The exported names
     push!(modcode, _exportexpr(mod))
 
@@ -340,20 +340,20 @@ function modulecode(mod::ROSModule)
 end
 
 #The imports specific to each module, including dependant packages
-function _importexprs(mod::ROSMsgModule)
+function _importexprs(mod::ROSMsgModule, rosrootmod::Module=Main)
     imports = Expr[Expr(:import, :RobotOS, :AbstractMsg)]
     othermods = filter(d -> d != _name(mod), mod.deps)
-    append!(imports, [Expr(:using,:Main,Symbol(m),:msg) for m in othermods])
+    append!(imports, [Expr(:using,Symbol(rosrootmod),Symbol(m),:msg) for m in othermods])
     imports
 end
-function _importexprs(mod::ROSSrvModule)
+function _importexprs(mod::ROSSrvModule, rosrootmod::Module=Main)
     imports = Expr[
         Expr(:import, :RobotOS, :AbstractSrv),
         Expr(:import, :RobotOS, :AbstractService),
         Expr(:import, :RobotOS, :_srv_reqtype),
         Expr(:import, :RobotOS, :_srv_resptype),
     ]
-    append!(imports, [Expr(:using,:Main,Symbol(m),:msg) for m in mod.deps])
+    append!(imports, [Expr(:using,Symbol(rosrootmod),Symbol(m),:msg) for m in mod.deps])
     imports
 end
 
@@ -519,7 +519,7 @@ function _addtypemember!(exprs, namestr, typestr)
         end
         j_typ = _ros_builtin_types[typestr]
         #Compute the default value now
-        j_def = @eval _typedefault($j_typ)
+        j_def = _typedefault(j_typ)
     end
 
     namesym = Symbol(namestr)
