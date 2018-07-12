@@ -10,6 +10,14 @@ const _py_sys = PyCall.PyNULL()
 const _py_ros_callbacks = PyCall.PyNULL()
 const __rospy__ = PyCall.PyNULL()
 
+include("debug.jl")
+include("time.jl")
+include("gentypes.jl")
+include("rospy.jl")
+include("pubsub.jl")
+include("services.jl")
+include("callbacks.jl")
+
 function __init__()
     #Put julia's ARGS into python's so remappings will work
     copy!(_py_sys, pyimport("sys"))
@@ -33,15 +41,7 @@ function __init__()
     end
 
     #Compile the callback notify function, see callbacks.jl
-    CB_NOTIFY_PTR[] = cfunction(_callback_notify, Cint, Tuple{Ptr{Cvoid}})
+    CB_NOTIFY_PTR[] = @cfunction(_callback_notify, Cint, (Ptr{Cvoid},))
 end
-
-include("debug.jl")
-include("time.jl")
-include("gentypes.jl")
-include("rospy.jl")
-include("pubsub.jl")
-include("services.jl")
-include("callbacks.jl")
 
 end

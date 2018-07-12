@@ -64,6 +64,10 @@ abstract type AbstractMsg end
 abstract type AbstractSrv end
 abstract type AbstractService end
 
+_is_tuple_expr(input) = input isa Expr && input.head == :tuple
+_is_colon_expr(input) = input isa Expr && input.head == :call && input.args[1] == :(:)
+_is_dot_expr(input) = input isa Expr && input.head == :(.)
+
 """
     @rosimport
 
@@ -81,13 +85,11 @@ macro rosimport(input)
     #Rearranges the expression into a RobotOS._rosimport call. Input comes in as a single package
     #qualified expression, or as a tuple expression where the first element is the same as the
     #single expression case. Most of the code is just error checking that the input takes that form.
-    @assert input.head in [:tuple, :(.), :(:)] "Improper @rosimport input"
-    if input.head == :tuple
-        @assert isa(input.args[1], Expr) "Improper @rosimport input"
-        @assert input.args[1].head == :(:) "First argument needs ':' following"
-        types = String[]
+    @assert _is_tuple_expr(input) || _is_colon_expr(input) || _is_dot_expr(input) "Improper @rosimport input"
+    if _is_tuple_expr(input)
+        @assert _is_colon_expr(input.args[1]) "Improper @rosimport input, first argument needs ':' following"
         pkg, ismsg, typ = _pkgtype_import(input.args[1])
-        push!(types, typ)
+        types = String[typ]
         for t in input.args[2:end]
             @assert isa(t, Symbol) "Type name ($(string(t))) not a symbol"
             push!(types, string(t))
@@ -98,32 +100,29 @@ macro rosimport(input)
         return :(_rosimport($pkg, $ismsg, $typ))
     end
 end
-
-_get_quote_value(input::QuoteNode) = input.value
-_get_quote_value(input::Expr) = (@assert input.head == :quote; input.args[1])
-
 #Return the pkg and types strings for a single expression of form:
 #  pkg.[msg|srv].type or pkg.[msg|srv]:type
 function _pkgtype_import(input::Expr)
-    @assert input.head in (:(.), :(:)) "Improper @rosimport input"
-    @assert isa(input.args[1], Expr) "Improper @rosimport input"
-    @assert input.args[1].head == :(.) "Improper @rosimport input"
-    p = input.args[1].args[1]
+    @assert _is_colon_expr(input) || _is_dot_expr(input) "Improper @rosimport input"
+    p_ms, t = _is_colon_expr(input) ? (input.args[2], input.args[3]) : (input.args[1], input.args[2])
+    @assert _is_dot_expr(p_ms) "Improper @rosimport input"
+    p = p_ms.args[1]
     @assert isa(p, Symbol) "Package name ($(string(p))) not a symbol"
-    m_or_s = _get_quote_value(input.args[1].args[2])
+    @assert isa(p_ms.args[2], QuoteNode) "Improper @rosimport input"
+    m_or_s = p_ms.args[2].value
     @assert m_or_s in (:msg,:srv) "Improper @rosimport input"
     ps = string(p)
     msb = m_or_s == :msg
     ts = ""
-    if isa(input.args[2], Symbol)
-        ts = string(input.args[2])
-    elseif isa(input.args[2], Expr)
-        @assert length(input.args[2].args) == 1 "Type name not a symbol"
-        tsym = input.args[2].args[1]
+    if isa(t, Symbol)
+        ts = string(t)
+    elseif isa(t, Expr)
+        @assert length(t.args) == 1 "Type name ($(t)) not a symbol"
+        tsym = t.args[1]
         @assert isa(tsym, Symbol) "Type name ($(string(tsym))) not a symbol"
         ts = string(tsym)
-    elseif isa(input.args[2], QuoteNode)
-        tsym = input.args[2].value
+    elseif isa(t, QuoteNode)
+        tsym = t.value
         @assert isa(tsym, Symbol) "Type name ($(string(tsym))) not a symbol"
         ts = string(tsym)
     end
@@ -179,8 +178,8 @@ function addtype!(mod::ROSMsgModule, typ::String)
     if !(typ in mod.members)
         @debug("Message type import: ", _fullname(mod), ".", typ)
         if _nameconflicts(typ)
-            warn("Message type '$typ' conflicts with Julia builtin, ",
-                 "will be imported as '$(_jl_safe_name(typ,"Msg"))'")
+            @warn("Message type '$typ' conflicts with Julia builtin, ",
+                  "will be imported as '$(_jl_safe_name(typ,"Msg"))'")
         end
         pymod, pyobj = _pyvars(_fullname(mod), typ)
 
@@ -350,19 +349,19 @@ end
 
 #The imports specific to each module, including dependant packages
 function _importexprs(mod::ROSMsgModule, rosrootmod::Module)
-    imports = Expr[Expr(:import, :RobotOS, :AbstractMsg)]
+    imports = Expr[:(import RobotOS.AbstractMsg)]
     othermods = filter(d -> d != _name(mod), mod.deps)
-    append!(imports, [Expr(:using,fullname(rosrootmod)...,Symbol(m),:msg) for m in othermods])
+    append!(imports, [Expr(:using, Expr(:., fullname(rosrootmod)..., Symbol(m), :msg)) for m in othermods])
     imports
 end
 function _importexprs(mod::ROSSrvModule, rosrootmod::Module)
     imports = Expr[
-        Expr(:import, :RobotOS, :AbstractSrv),
-        Expr(:import, :RobotOS, :AbstractService),
-        Expr(:import, :RobotOS, :_srv_reqtype),
-        Expr(:import, :RobotOS, :_srv_resptype),
+        :(import RobotOS.AbstractSrv),
+        :(import RobotOS.AbstractService),
+        :(import RobotOS._srv_reqtype),
+        :(import RobotOS._srv_resptype)
     ]
-    append!(imports, [Expr(:using,fullname(rosrootmod)...,Symbol(m),:msg) for m in mod.deps])
+    append!(imports, [Expr(:using, Expr(:., fullname(rosrootmod)..., Symbol(m), :msg)) for m in mod.deps])
     imports
 end
 
@@ -513,8 +512,8 @@ function _addtypemember!(exprs, namestr, typestr)
     jlconargs = exprs[4].args[2].args
 
     if typestr == "char" || typestr == "byte"
-        warn("Use of type '$typestr' is deprecated in message definitions, ",
-        "use '$(lowercase(string(_ros_builtin_types[typestr])))' instead.")
+        @warn("Use of type '$typestr' is deprecated in message definitions, ",
+              "use '$(lowercase(string(_ros_builtin_types[typestr])))' instead.")
     end
 
     typestr, arraylen = _check_array_type(typestr)
