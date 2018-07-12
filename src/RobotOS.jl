@@ -1,4 +1,5 @@
-isdefined(Base, :__precompile__) && __precompile__()
+__precompile__()
+
 
 module RobotOS
 
@@ -16,7 +17,7 @@ function __init__()
 
     #Fill in empty PyObjects
     if ! (dirname(@__FILE__) in _py_sys["path"])
-        unshift!(_py_sys["path"], dirname(@__FILE__))
+        pushfirst!(_py_sys["path"], dirname(@__FILE__))
     end
     copy!(_py_ros_callbacks, pyimport("ros_callbacks"))
 
@@ -32,7 +33,7 @@ function __init__()
     end
 
     #Compile the callback notify function, see callbacks.jl
-    CB_NOTIFY_PTR[] = cfunction(_callback_notify, Cint, Tuple{Ptr{Void}})
+    CB_NOTIFY_PTR[] = cfunction(_callback_notify, Cint, Tuple{Ptr{Cvoid}})
 end
 
 include("debug.jl")

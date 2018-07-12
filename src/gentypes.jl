@@ -609,7 +609,7 @@ function _splittypestr(typestr::String)
 end
 #Valid ROS type string is all word chars split by a single forward slash, with
 #optional square brackets for array types
-_isrostype(s::String) = ismatch(r"^\w+/\w+(?:\[\d*\])?$", s)
+_isrostype(s::String) = occursin(r"^\w+/\w+(?:\[\d*\])?$", s)
 
 #Sanitize a string by checking for and removing brackets if they are present
 #Return the sanitized type and the number inside the brackets if it is a fixed

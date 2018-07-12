@@ -1,12 +1,12 @@
 #This function will run in a new python thread created by rospy.
 #No julia allocation allowed.
-function _callback_notify(handle::Ptr{Void})
-    ccall(:uv_async_send, Cint, (Ptr{Void},), handle)
+function _callback_notify(handle::Ptr{Cvoid})
+    ccall(:uv_async_send, Cint, (Ptr{Cvoid},), handle)
 end
 
 #The pointer to the compiled notify function. This can't be precompiled so it gets initialized in
 #the module __init__ function.
-const CB_NOTIFY_PTR = Ref{Ptr{Void}}()
+const CB_NOTIFY_PTR = Ref{Ptr{Cvoid}}()
 
 function _callback_async_loop(rosobj, cond)
     @debug("Spinning up callback loop...")
