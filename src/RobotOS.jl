@@ -1,6 +1,3 @@
-__precompile__()
-
-
 module RobotOS
 
 using PyCall

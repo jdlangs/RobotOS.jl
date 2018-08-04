@@ -77,13 +77,12 @@ load-time latency (useful for real-life applications!) by generating the ROS typ
 modules inside your package module using an approach similar to the example below:
 
     # MyROSPackage.jl
-    __precompile__()
     module MyROSPackage
 
     using RobotOS
 
     @rosimport geometry_msgs.msg: Pose
-    rostypegen(current_module())
+    rostypegen(@__MODULE__)
     import .geometry_msgs.msg: Pose
     # ...
 
