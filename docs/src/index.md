@@ -72,7 +72,7 @@ regenerated, the first version will remain.
 ### Compatibility with Package Precompilation
 As described above, by default `rostypegen` creates modules in `Main` -- however,
 this behavior is incompatible with Julia package precompilation. If you are using
-`RobotOS` in the context of a module, as opposed to a script, you may reduce
+`RobotOS` in your own module or package, as opposed to a script, you may reduce
 load-time latency (useful for real-life applications!) by generating the ROS type
 modules inside your package module using an approach similar to the example below:
 
@@ -87,20 +87,12 @@ modules inside your package module using an approach similar to the example belo
     import .geometry_msgs.msg: Pose
     # ...
 
-    function __init__()
-        @rosimport geometry_msgs.msg: Pose
-        # ...
-    end
-
     end
 
 In this case, we have provided `rostypegen` with a root module (`MyROSPackage`)
 for type generation. The Julia type corresponding to `geometry_msgs/Pose` now
 lives at `MyROSPackage.geometry_msgs.msg.Pose`; note the extra dot in
-`import .geometry_msgs.msg: Pose`. A precompiled package using `RobotOS` must
-also duplicate any `@rosimport` statements within the `__init__` function in
-its module so that necessary memory/objects in the Python runtime can be
-allocated each time the package is used.
+`import .geometry_msgs.msg: Pose`.
 
 ## Usage: ROS API
 

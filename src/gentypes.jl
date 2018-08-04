@@ -277,12 +277,13 @@ function _import_rospy_pkg(package::String)
 end
 
 #The function that creates and fills the generated top-level modules
-function buildpackage(pkg::ROSPackage, rosrootmod::Module=Main)
+function buildpackage(pkg::ROSPackage, rosrootmod::Module)
     @debug("Building package: ", _name(pkg))
 
     #Create the top-level module for the package in Main
     pkgsym = Symbol(_name(pkg))
     pkgcode = :(module ($pkgsym) end)
+    pkginitcode = :(function __init__() end)
 
     #Add msg and srv submodules if needed
     @debug_addindent
@@ -293,6 +294,9 @@ function buildpackage(pkg::ROSPackage, rosrootmod::Module=Main)
             push!(msgmod.args[3].args, expr)
         end
         push!(pkgcode.args[3].args, msgmod)
+        for typ in pkg.msg.members
+            push!(pkginitcode.args[2].args, :(@rosimport $(pkgsym).msg: $(Symbol(typ))))
+        end
     end
     if length(pkg.srv.members) > 0
         srvmod = :(module srv end)
@@ -301,14 +305,19 @@ function buildpackage(pkg::ROSPackage, rosrootmod::Module=Main)
             push!(srvmod.args[3].args, expr)
         end
         push!(pkgcode.args[3].args, srvmod)
+        for typ in pkg.srv.members
+            push!(pkginitcode.args[2].args, :(@rosimport $(pkgsym).srv: $(Symbol(typ))))
+        end
     end
+    push!(pkgcode.args[3].args, :(import RobotOS.@rosimport))
+    push!(pkgcode.args[3].args, pkginitcode)
     pkgcode = Expr(:toplevel, pkgcode)
     rosrootmod.eval(pkgcode)
     @debug_subindent
 end
 
 #Generate all code for a .msg or .srv module
-function modulecode(mod::ROSModule, rosrootmod::Module=Main)
+function modulecode(mod::ROSModule, rosrootmod::Module)
     @debug("submodule: ", _fullname(mod))
     modcode = Expr[]
 
@@ -340,13 +349,13 @@ function modulecode(mod::ROSModule, rosrootmod::Module=Main)
 end
 
 #The imports specific to each module, including dependant packages
-function _importexprs(mod::ROSMsgModule, rosrootmod::Module=Main)
+function _importexprs(mod::ROSMsgModule, rosrootmod::Module)
     imports = Expr[Expr(:import, :RobotOS, :AbstractMsg)]
     othermods = filter(d -> d != _name(mod), mod.deps)
     append!(imports, [Expr(:using,Symbol(rosrootmod),Symbol(m),:msg) for m in othermods])
     imports
 end
-function _importexprs(mod::ROSSrvModule, rosrootmod::Module=Main)
+function _importexprs(mod::ROSSrvModule, rosrootmod::Module)
     imports = Expr[
         Expr(:import, :RobotOS, :AbstractSrv),
         Expr(:import, :RobotOS, :AbstractService),
