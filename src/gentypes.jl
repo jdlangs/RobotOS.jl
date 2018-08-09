@@ -352,7 +352,7 @@ end
 function _importexprs(mod::ROSMsgModule, rosrootmod::Module)
     imports = Expr[Expr(:import, :RobotOS, :AbstractMsg)]
     othermods = filter(d -> d != _name(mod), mod.deps)
-    append!(imports, [Expr(:using,Symbol(rosrootmod),Symbol(m),:msg) for m in othermods])
+    append!(imports, [Expr(:using,fullname(rosrootmod)...,Symbol(m),:msg) for m in othermods])
     imports
 end
 function _importexprs(mod::ROSSrvModule, rosrootmod::Module)
@@ -362,7 +362,7 @@ function _importexprs(mod::ROSSrvModule, rosrootmod::Module)
         Expr(:import, :RobotOS, :_srv_reqtype),
         Expr(:import, :RobotOS, :_srv_resptype),
     ]
-    append!(imports, [Expr(:using,Symbol(rosrootmod),Symbol(m),:msg) for m in mod.deps])
+    append!(imports, [Expr(:using,fullname(rosrootmod)...,Symbol(m),:msg) for m in mod.deps])
     imports
 end
 
