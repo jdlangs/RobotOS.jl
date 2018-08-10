@@ -136,6 +136,25 @@
 
 <p>There is one special case, where the ROS type name conflicts with a built-in Julia type name (e.g., <code>std_msgs/Float64</code> or <code>std_msgs/String</code>). In these cases, the generated Julia type will have "Msg" appended to the name for disambiguation (e.g., <code>std_msgs.msg.Float64Msg</code> and <code>std_msgs.msg.StringMsg</code>).</p>
 <p>An additional function, <code>rostypereset()</code>, resets the type generation process, possibly useful for development in the REPL. When invoked, new <code>@rosimport</code> calls will be needed to generate the same or different types, and previously generated modules will be overwritten after <code>rostypegen()</code> is called again.  Keep in mind that names cannot be cleared once defined so if a module is not regenerated, the first version will remain.</p>
+<p><a id='Compatibility-with-Package-Precompilation-1'></a></p>
+<h3 id="compatibility-with-package-precompilation">Compatibility with Package Precompilation</h3>
+<p>As described above, by default <code>rostypegen</code> creates modules in <code>Main</code> – however, this behavior is incompatible with Julia package precompilation. If you are using <code>RobotOS</code> in your own module or package, as opposed to a script, you may reduce load-time latency (useful for real-life applications!) by generating the ROS type modules inside your package module using an approach similar to the example below:</p>
+<div class="codehilite"><pre><span class="cp"># MyROSPackage.jl</span>
+<span class="n">__precompile__</span><span class="p">()</span>
+<span class="n">module</span> <span class="n">MyROSPackage</span>
+
+<span class="n">using</span> <span class="n">RobotOS</span>
+
+<span class="err">@</span><span class="n">rosimport</span> <span class="n">geometry_msgs</span><span class="p">.</span><span class="n">msg</span><span class="o">:</span> <span class="n">Pose</span>
+<span class="n">rostypegen</span><span class="p">(</span><span class="n">current_module</span><span class="p">())</span>
+<span class="n">import</span> <span class="p">.</span><span class="n">geometry_msgs</span><span class="p">.</span><span class="n">msg</span><span class="o">:</span> <span class="n">Pose</span>
+<span class="cp"># ...</span>
+
+<span class="n">end</span>
+</pre></div>
+
+
+<p>In this case, we have provided <code>rostypegen</code> with a root module (<code>MyROSPackage</code>) for type generation. The Julia type corresponding to <code>geometry_msgs/Pose</code> now lives at <code>MyROSPackage.geometry_msgs.msg.Pose</code>; note the extra dot in <code>import .geometry_msgs.msg: Pose</code>.</p>
 <p><a id='Usage:-ROS-API-1'></a></p>
 <h2 id="usage-ros-api">Usage: ROS API</h2>
 <p>In general, the API functions provided directly match those provided in rospy, with few cosmetic differences. The rospy API functions can reviewed here: <a href="http://wiki.ros.org/rospy/Overview">http://wiki.ros.org/rospy/Overview</a></p>
@@ -387,6 +406,6 @@
 </html>
 
 <!--
-MkDocs version : 0.17.3
-Build Date UTC : 2018-03-19 15:53:33
+MkDocs version : 0.17.5
+Build Date UTC : 2018-08-10 03:07:43
 -->
