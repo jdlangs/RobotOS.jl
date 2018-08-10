@@ -69,6 +69,31 @@ generated modules will be overwritten after `rostypegen()` is called again.  Kee
 in mind that names cannot be cleared once defined so if a module is not
 regenerated, the first version will remain.
 
+### Compatibility with Package Precompilation
+As described above, by default `rostypegen` creates modules in `Main` -- however,
+this behavior is incompatible with Julia package precompilation. If you are using
+`RobotOS` in your own module or package, as opposed to a script, you may reduce
+load-time latency (useful for real-life applications!) by generating the ROS type
+modules inside your package module using an approach similar to the example below:
+
+    # MyROSPackage.jl
+    __precompile__()
+    module MyROSPackage
+
+    using RobotOS
+
+    @rosimport geometry_msgs.msg: Pose
+    rostypegen(current_module())
+    import .geometry_msgs.msg: Pose
+    # ...
+
+    end
+
+In this case, we have provided `rostypegen` with a root module (`MyROSPackage`)
+for type generation. The Julia type corresponding to `geometry_msgs/Pose` now
+lives at `MyROSPackage.geometry_msgs.msg.Pose`; note the extra dot in
+`import .geometry_msgs.msg: Pose`.
+
 ## Usage: ROS API
 
 In general, the API functions provided directly match those provided in rospy,
