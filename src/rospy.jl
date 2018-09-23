@@ -1,7 +1,7 @@
 #Wrappers for functions directly in the rospy namespace
 export init_node, is_shutdown, spin,
        get_param, has_param, set_param, delete_param,
-       logdebug, loginfo, logwarn, logerr, logfatal
+       logdebug, loginfo, logwarn, logerr, logfatal, get_name
 
 """
     init_node(name; args...)
