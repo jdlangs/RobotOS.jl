@@ -178,7 +178,7 @@ function addtype!(mod::ROSMsgModule, typ::String)
     if !(typ in mod.members)
         @debug("Message type import: ", _fullname(mod), ".", typ)
         if _nameconflicts(typ)
-            @warn("Message type '$typ' conflicts with Julia builtin, ",
+            @warn("Message type '$typ' conflicts with Julia builtin, " *
                   "will be imported as '$(_jl_safe_name(typ,"Msg"))'")
         end
         pymod, pyobj = _pyvars(_fullname(mod), typ)
@@ -512,7 +512,7 @@ function _addtypemember!(exprs, namestr, typestr)
     jlconargs = exprs[4].args[2].args
 
     if typestr == "char" || typestr == "byte"
-        @warn("Use of type '$typestr' is deprecated in message definitions, ",
+        @warn("Use of type '$typestr' is deprecated in message definitions, " *
               "use '$(lowercase(string(_ros_builtin_types[typestr])))' instead.")
     end
 
