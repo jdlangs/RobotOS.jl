@@ -11,6 +11,6 @@ deploydocs(
     branch = "gh-pages",
     latest = "master",
     osname="linux",
-    julia="0.6",
+    julia="1.0",
     deps=Deps.pip("mkdocs"),
     )

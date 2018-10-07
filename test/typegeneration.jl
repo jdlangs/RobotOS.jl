@@ -32,7 +32,7 @@ rostypegen()
 module TestModule
     using RobotOS
     @rosimport std_msgs.msg: Float32
-    rostypegen(current_module())
+    rostypegen(@__MODULE__)
 end
 @test !isdefined(std_msgs.msg, :Float32Msg)
 @test isdefined(TestModule, :std_msgs)
@@ -84,7 +84,7 @@ path2 = convert(nav_msgs.msg.Path, pypath)
 
 #Issue #6 - Empty message
 emptymsg = std_msgs.msg.Empty()
-@test length(fieldnames(emptymsg)) == 0
+@test length(fieldnames(typeof(emptymsg))) == 0
 
 #Issue #7/8 - Renaming conflicting message types
 @test isdefined(std_msgs.msg, :Float64Msg)

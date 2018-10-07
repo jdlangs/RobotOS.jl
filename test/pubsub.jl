@@ -7,7 +7,7 @@ using .geometry_msgs.msg
 const Nmsgs = 10
 const rate = 20. #Hz
 const msgs = PoseStamped[]
-const refs = Array{Vector3}(Nmsgs)
+const refs = Array{Vector3}(undef, Nmsgs)
 const t0 = to_nsec(get_rostime())
 
 for i=1:Nmsgs

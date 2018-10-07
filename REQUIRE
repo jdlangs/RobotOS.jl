@@ -1,3 +1,2 @@
-julia 0.6
-PyCall 1.11.0
-Compat 0.34.0
+julia 0.7
+PyCall 1.17.1
