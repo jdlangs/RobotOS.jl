@@ -140,13 +140,12 @@
 <h3 id="compatibility-with-package-precompilation">Compatibility with Package Precompilation</h3>
 <p>As described above, by default <code>rostypegen</code> creates modules in <code>Main</code> – however, this behavior is incompatible with Julia package precompilation. If you are using <code>RobotOS</code> in your own module or package, as opposed to a script, you may reduce load-time latency (useful for real-life applications!) by generating the ROS type modules inside your package module using an approach similar to the example below:</p>
 <div class="codehilite"><pre><span class="cp"># MyROSPackage.jl</span>
-<span class="n">__precompile__</span><span class="p">()</span>
 <span class="n">module</span> <span class="n">MyROSPackage</span>
 
 <span class="n">using</span> <span class="n">RobotOS</span>
 
 <span class="err">@</span><span class="n">rosimport</span> <span class="n">geometry_msgs</span><span class="p">.</span><span class="n">msg</span><span class="o">:</span> <span class="n">Pose</span>
-<span class="n">rostypegen</span><span class="p">(</span><span class="n">current_module</span><span class="p">())</span>
+<span class="n">rostypegen</span><span class="p">(</span><span class="err">@</span><span class="n">__MODULE__</span><span class="p">)</span>
 <span class="n">import</span> <span class="p">.</span><span class="n">geometry_msgs</span><span class="p">.</span><span class="n">msg</span><span class="o">:</span> <span class="n">Pose</span>
 <span class="cp"># ...</span>
 
@@ -407,5 +406,5 @@
 
 <!--
 MkDocs version : 0.17.5
-Build Date UTC : 2018-08-10 03:07:43
+Build Date UTC : 2018-10-07 17:32:55
 -->
