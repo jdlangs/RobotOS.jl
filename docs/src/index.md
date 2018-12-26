@@ -52,7 +52,7 @@ std_msgs.msg.Header`. After calling `rostypegen()` they can be interacted with
 just like regular modules with `import` and `using` statements bringing the
 generated type names into the local namespace.
 
-    using nav_msgs.msg
+    using .nav_msgs.msg
     import geometry_msgs.msg: Pose, Vector3
     p = Path()
     v = Vector3(1.1,2.2,3.3)
@@ -129,7 +129,7 @@ and value of the `t` parameter.
 Publishing messages is the same as in rospy, except use the `publish` method,
 paired with a Publisher object. For example:
 
-    using geometry_msgs.msg
+    using .geometry_msgs.msg
     pub = Publisher{PointStamped}("topic", queue_size = 10) #or...
     #pub = Publisher("topic", PointStamped, queue_size = 10)
     msg = PointStamped()
@@ -148,7 +148,7 @@ callback is invoked. Note that it must be passed as a tuple, even if there is
 only a single argument. And again, keyword arguments are directly forwarded. An
 example:
 
-    using sensor_msgs.msg
+    using .sensor_msgs.msg
     cb1(msg::Imu, a::String) = println(a,": ",msg.linear_acceleration.x)
     cb2(msg::Imu) = println(msg.angular_velocity.z)
     sub1 = Subscriber{Imu}("topic", cb1, ("accel",), queue_size = 10) #or...
@@ -179,7 +179,7 @@ Message constants may be accessed using `getindex` syntax. For example for
 [visualization_msgs/Marker.msg](http://docs.ros.org/api/visualization_msgs/html/msg/Marker.html)
 we have:
 
-    import visualization_msgs.msg: Marker
+    import .visualization_msgs.msg: Marker
     Marker[:SPHERE] == getindex(Marker, :SPHERE) == 2   # true
 
 ## ROS Integration
@@ -215,7 +215,7 @@ republishes them as Points.
     using RobotOS
     @rosimport geometry_msgs.msg: Point, Pose2D
     rostypegen()
-    using geometry_msgs.msg
+    using .geometry_msgs.msg
 
     function callback(msg::Pose2D, pub_obj::Publisher{Point})
         pt_msg = Point(msg.x, msg.y, 0.0)
