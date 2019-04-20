@@ -54,13 +54,13 @@ planresp = nav_msgs.srv.GetPlanResponse()
 #convert to/from PyObject
 posestamp.pose.position = geometry_msgs.msg.Point(1,2,3)
 pypose = convert(PyObject, posestamp)
-@test pypose[:pose][:position][:x] == 1.
-@test pypose[:pose][:position][:y] == 2.
-@test pypose[:pose][:position][:z] == 3.
+@test pypose.pose.position.x == 1.
+@test pypose.pose.position.y == 2.
+@test pypose.pose.position.z == 3.
 pypose2 = PyObject(posestamp)
-@test pypose2[:pose][:position][:x] == 1.
-@test pypose2[:pose][:position][:y] == 2.
-@test pypose2[:pose][:position][:z] == 3.
+@test pypose2.pose.position.x == 1.
+@test pypose2.pose.position.y == 2.
+@test pypose2.pose.position.z == 3.
 pose2 = convert(geometry_msgs.msg.PoseStamped, pypose)
 @test pose2.pose.position.x == 1.
 @test pose2.pose.position.y == 2.
@@ -68,7 +68,7 @@ pose2 = convert(geometry_msgs.msg.PoseStamped, pypose)
 @test_throws InexactError convert(geometry_msgs.msg.Pose, pypose)
 
 #access message enum
-@test visualization_msgs.msg.Marker[:CUBE] == 1
+@test visualization_msgs.msg.Marker.CUBE == 1
 
 #Proper array handling
 path = nav_msgs.msg.Path()

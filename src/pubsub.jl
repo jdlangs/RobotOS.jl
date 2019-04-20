@@ -14,7 +14,7 @@ struct Publisher{MsgType<:AbstractMsg}
     function Publisher{MT}(topic::AbstractString; kwargs...) where MT <: AbstractMsg
         @debug("Creating <$(string(MT))> publisher on topic: '$topic'")
         rospycls = _get_rospy_class(MT)
-        return new{MT}(__rospy__[:Publisher](ascii(topic), rospycls; kwargs...))
+        return new{MT}(__rospy__.Publisher(ascii(topic), rospycls; kwargs...))
     end
 end
 
@@ -27,7 +27,7 @@ Publisher(topic::AbstractString, ::Type{MT}; kwargs...) where {MT <: AbstractMsg
 Publish `msg` on `p`, a `Publisher` with matching message type.
 """
 function publish(p::Publisher{MT}, msg::MT) where MT <: AbstractMsg
-    pycall(p.o["publish"], PyAny, convert(PyObject, msg))
+    pycall(p.o."publish", PyAny, convert(PyObject, msg))
 end
 
 """
@@ -52,8 +52,8 @@ mutable struct Subscriber{MsgType<:AbstractMsg}
         rospycls = _get_rospy_class(MT)
 
         cond = Base.AsyncCondition()
-        mqueue = _py_ros_callbacks["MessageQueue"](CB_NOTIFY_PTR[], cond.handle)
-        subobj = __rospy__[:Subscriber](ascii(topic), rospycls, mqueue["storemsg"]; kwargs...)
+        mqueue = _py_ros_callbacks."MessageQueue"(CB_NOTIFY_PTR[], cond.handle)
+        subobj = __rospy__.Subscriber(ascii(topic), rospycls, mqueue."storemsg"; kwargs...)
 
         rosobj = new{MT}(cb, cb_args, subobj, mqueue)
         cbloop = Task(() -> _callback_async_loop(rosobj, cond))

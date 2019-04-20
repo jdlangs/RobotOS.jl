@@ -18,11 +18,11 @@ include("callbacks.jl")
 function __init__()
     #Put julia's ARGS into python's so remappings will work
     copy!(_py_sys, pyimport("sys"))
-    _py_sys["argv"] = ARGS
+    _py_sys."argv" = ARGS
 
     #Fill in empty PyObjects
-    if ! (dirname(@__FILE__) in _py_sys["path"])
-        pushfirst!(_py_sys["path"], dirname(@__FILE__))
+    if ! (dirname(@__FILE__) in _py_sys."path")
+        pushfirst!(_py_sys."path", dirname(@__FILE__))
     end
     copy!(_py_ros_callbacks, pyimport("ros_callbacks"))
 

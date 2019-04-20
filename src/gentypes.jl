@@ -183,7 +183,7 @@ function addtype!(mod::ROSMsgModule, typ::String)
         end
         pymod, pyobj = _pyvars(_fullname(mod), typ)
 
-        deptypes = pyobj[:_slot_types]
+        deptypes = pyobj._slot_types
         _importdeps!(mod, deptypes)
 
         push!(mod.members, typ)
@@ -199,15 +199,15 @@ function addtype!(mod::ROSSrvModule, typ::String)
         @debug("Service type import: ", _fullname(mod), ".", typ)
         pymod, pyobj = _pyvars(_fullname(mod), typ)
 
-        if ! haskey(pyobj, "_request_class")
+        if ! PyCall.hasproperty(pyobj, "_request_class")
             error(string("Incorrect service name: ", typ))
         end
 
         #Immediately import dependencies from the Request/Response classes
         #Repeats are OK
-        req_obj = pymod[string(typ,"Request")]
-        resp_obj = pymod[string(typ,"Response")]
-        deptypes = [req_obj[:_slot_types]; resp_obj[:_slot_types]]
+        req_obj = getproperty(pymod, string(typ,"Request"))
+        resp_obj = getproperty(pymod, string(typ,"Response"))
+        deptypes = [req_obj._slot_types; resp_obj._slot_types]
         _importdeps!(mod, deptypes)
 
         push!(mod.members, typ)
@@ -222,7 +222,7 @@ end
 function _pyvars(modname::String, typ::String)
     pymod = _import_rospy_pkg(modname)
     pyobj =
-        try pymod[typ]
+        try getproperty(pymod, typ)
         catch ex
             isa(ex, KeyError) || rethrow(ex)
             error("Message type '$typ' not found in ROS package '$modname', ",
@@ -269,7 +269,7 @@ function _import_rospy_pkg(package::String)
             _rospy_modules[package] = pyimport(package)
         catch ex
             show(ex)
-            error("python import error: $(ex.val[:args][1])")
+            error("python import error: $(ex.val.args[1])")
         end
     end
     _rospy_modules[package]
@@ -324,7 +324,7 @@ function modulecode(mod::ROSModule, rosrootmod::Module)
     push!(modcode,
         quote
             using PyCall
-            import Base: convert, getindex
+            import Base: convert, getproperty
             import RobotOS
             import RobotOS.Time
             import RobotOS.Duration
@@ -390,8 +390,8 @@ function buildtype(mod::ROSMsgModule, typename::String)
     global _rospy_objects
     fulltypestr = _rostypestr(mod, typename)
     pyobj = _rospy_objects[fulltypestr]
-    memnames = pyobj[:__slots__]
-    memtypes = pyobj[:_slot_types]
+    memnames = pyobj.__slots__
+    memtypes = pyobj._slot_types
     members = collect(zip(memnames, memtypes))
 
     typecode(fulltypestr, :AbstractMsg, members)
@@ -404,16 +404,16 @@ function buildtype(mod::ROSSrvModule, typename::String)
 
     req_typestr = _rostypestr(mod, string(typename,"Request"))
     reqobj = _rospy_objects[req_typestr]
-    memnames = reqobj[:__slots__]
-    memtypes = reqobj[:_slot_types]
+    memnames = reqobj.__slots__
+    memtypes = reqobj._slot_types
     reqmems = collect(zip(memnames, memtypes))
     pyreq  = :(RobotOS._rospy_objects[$req_typestr])
     reqexprs  = typecode(req_typestr, :AbstractSrv, reqmems)
 
     resp_typestr = _rostypestr(mod, string(typename,"Response"))
     respobj = _rospy_objects[resp_typestr]
-    memnames = respobj[:__slots__]
-    memtypes = respobj[:_slot_types]
+    memnames = respobj.__slots__
+    memtypes = respobj._slot_types
     respmems = collect(zip(memnames, memtypes))
     pyresp = :(RobotOS._rospy_objects[$resp_typestr])
     respexprs = typecode(resp_typestr, :AbstractSrv, respmems)
@@ -436,7 +436,7 @@ end
 # (2) Default outer constructer with no arguments
 # (3) convert(PyObject, ...)
 # (4) convert(..., o::PyObject)
-# (5) getindex for accessing member constants
+# (5) getproperty for accessing member constants
 function typecode(rosname::String, super::Symbol, members::Vector)
     tname = _splittypestr(rosname)[2]
     @debug("Type: ", tname)
@@ -477,7 +477,7 @@ function typecode(rosname::String, super::Symbol, members::Vector)
     #(4) Convert from PyObject
     push!(exprs, :(
         function convert(jlt::Type{$jlsym}, o::PyObject)
-            if convert(String, o["_type"]) != _typerepr(jlt)
+            if convert(String, o."_type") != _typerepr(jlt)
                 throw(InexactError(:convert, $jlsym, o))
             end
             jl = $jlsym()
@@ -485,9 +485,19 @@ function typecode(rosname::String, super::Symbol, members::Vector)
             jl
         end
     ))
-    #(5) Accessing member variables through getindex
+    #(5) Accessing member variables through getproperty
     push!(exprs, :(
-        getindex(::Type{$jlsym}, s::Symbol) = RobotOS._rospy_objects[$rosname][s]
+        function getproperty(::Type{$jlsym}, s::Symbol)
+            try getproperty(RobotOS._rospy_objects[$rosname], s)
+            catch ex
+                isa(ex, KeyError) || rethrow(ex)
+                try getfield($jlsym, s)
+                catch ex2
+                    startswith(ex2.msg, "type DataType has no field") || rethrow(ex2)
+                    error("Message type '" * $("$jlsym") * "' has no property '$s'.")
+                end
+            end
+        end
     ))
 
     #Now add the meat to the empty expressions above
@@ -534,25 +544,25 @@ function _addtypemember!(exprs, namestr, typestr)
     if arraylen >= 0
         memexpr = :($namesym::Array{$j_typ,1})
         defexpr = :([$j_def for i = 1:$arraylen])
-        jlconexpr = :(jl.$namesym = convert(Array{$j_typ,1}, o[$namestr]))
+        jlconexpr = :(jl.$namesym = convert(Array{$j_typ,1}, o.$namestr))
 
         #uint8[] is string in rospy and PyCall's conversion to bytearray is
         #rejected by ROS
         if j_typ == :UInt8
-            pyconexpr = :(py[$namestr] =
+            pyconexpr = :(py.$namestr =
                 pycall(pybuiltin("str"), PyObject, PyObject(o.$namesym))
             )
         elseif _isrostype(typestr)
-            pyconexpr = :(py[$namestr] =
+            pyconexpr = :(py.$namestr =
                 convert(Array{PyObject,1}, o.$namesym))
         else
-            pyconexpr = :(py[$namestr] = o.$namesym)
+            pyconexpr = :(py.$namestr = o.$namesym)
         end
     else
         memexpr = :($namesym::$j_typ)
         defexpr = j_def
-        jlconexpr = :(jl.$namesym = convert($j_typ, o[$namestr]))
-        pyconexpr = :(py[$namestr] = convert(PyObject, o.$namesym))
+        jlconexpr = :(jl.$namesym = convert($j_typ, o.$namestr))
+        pyconexpr = :(py.$namestr = convert(PyObject, o.$namesym))
     end
     push!(typeargs, memexpr)
     insert!(jlconargs, length(jlconargs), jlconexpr)
