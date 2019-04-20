@@ -2,22 +2,26 @@ language: julia
 julia:
   - 0.7
   - 1.0
+  - 1.1
   - nightly
+matrix:
+  allow_failures:
+    - julia: nightly
 sudo: required
-dist: trusty
+dist: xenial
 env:
   global:
     - PYTHON=python
 before_install:
-  - sudo apt-add-repository -y "deb http://packages.ros.org/ros/ubuntu trusty main"
+  - sudo apt-add-repository -y "deb http://packages.ros.org/ros/ubuntu xenial main"
   - wget https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -O - | sudo apt-key add -
   - sudo apt-get update
-  - sudo apt-get -y install ros-indigo-ros-base ros-indigo-common-msgs
+  - sudo apt-get -y install ros-kinetic-ros-base ros-kinetic-common-msgs
   - sudo rosdep init
   - rosdep update
 before_script:
   - export PATH=/usr/bin:$PATH
-  - source /opt/ros/indigo/setup.sh
+  - source /opt/ros/kinetic/setup.sh
   - roscore &
   - sleep 5
   - python test/echonode.py &
