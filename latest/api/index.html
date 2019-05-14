@@ -10,73 +10,74 @@
         <link rel="shortcut icon" href="../img/favicon.ico">
         <title>API Reference - RobotOS.jl</title>
         <link href="../css/bootstrap-custom.min.css" rel="stylesheet">
-        <link href="../css/font-awesome-4.5.0.css" rel="stylesheet">
+        <link href="../css/font-awesome.min.css" rel="stylesheet">
         <link href="../css/base.css" rel="stylesheet">
-        <link rel="stylesheet" href="../css/highlight.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css">
         <link href="../assets/Documenter.css" rel="stylesheet">
         <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
         <!--[if lt IE 9]>
             <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
-            <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+            <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
         <![endif]-->
 
-        <script src="../js/jquery-1.10.2.min.js"></script>
-        <script src="../js/bootstrap-3.0.3.min.js"></script>
-        <script src="../js/highlight.pack.js"></script> 
+        <script src="../js/jquery-1.10.2.min.js" defer></script>
+        <script src="../js/bootstrap-3.0.3.min.js" defer></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+        <script>hljs.initHighlightingOnLoad();</script> 
     </head>
 
     <body>
 
         <div class="navbar navbar-default navbar-fixed-top" role="navigation">
-    <div class="container">
+            <div class="container">
 
-        <!-- Collapsed navigation -->
-        <div class="navbar-header">
-            <!-- Expander button -->
-            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
-                <span class="sr-only">Toggle navigation</span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-            </button>
-            <a class="navbar-brand" href="..">RobotOS.jl</a>
+                <!-- Collapsed navigation -->
+                <div class="navbar-header">
+                    <!-- Expander button -->
+                    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" href="..">RobotOS.jl</a>
+                </div>
+
+                <!-- Expanded navigation -->
+                <div class="navbar-collapse collapse">
+                        <!-- Main navigation -->
+                        <ul class="nav navbar-nav">
+                            <li >
+                                <a href="..">Introduction</a>
+                            </li>
+                            <li class="active">
+                                <a href="./">API Reference</a>
+                            </li>
+                        </ul>
+
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="#" data-toggle="modal" data-target="#mkdocs_search_modal">
+                                <i class="fa fa-search"></i> Search
+                            </a>
+                        </li>
+                            <li >
+                                <a rel="next" href="..">
+                                    <i class="fa fa-arrow-left"></i> Previous
+                                </a>
+                            </li>
+                            <li class="disabled">
+                                <a rel="prev" >
+                                    Next <i class="fa fa-arrow-right"></i>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="https://github.com/jdlangs/RobotOS.jl/edit/master/docs/api.md"><i class="fa fa-github"></i> Edit on GitHub</a>
+                            </li>
+                    </ul>
+                </div>
+            </div>
         </div>
-
-        <!-- Expanded navigation -->
-        <div class="navbar-collapse collapse">
-                <!-- Main navigation -->
-                <ul class="nav navbar-nav">
-                    <li >
-                        <a href="..">Introduction</a>
-                    </li>
-                    <li class="active">
-                        <a href="./">API Reference</a>
-                    </li>
-                </ul>
-
-            <ul class="nav navbar-nav navbar-right">
-                <li>
-                    <a href="#" data-toggle="modal" data-target="#mkdocs_search_modal">
-                        <i class="fa fa-search"></i> Search
-                    </a>
-                </li>
-                    <li >
-                        <a rel="next" href="..">
-                            <i class="fa fa-arrow-left"></i> Previous
-                        </a>
-                    </li>
-                    <li class="disabled">
-                        <a rel="prev" >
-                            Next <i class="fa fa-arrow-right"></i>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="https://github.com/jdlangs/RobotOS.jl/edit/master/docs/api.md"><i class="fa fa-github"></i> Edit on GitHub</a>
-                    </li>
-            </ul>
-        </div>
-    </div>
-</div>
 
         <div class="container">
                 <div class="col-md-3"><div class="bs-sidebar hidden-print affix well" role="complementary">
@@ -99,29 +100,25 @@
 <h2 id="ros-type-generation">ROS Type Generation</h2>
 <p><a id='RobotOS.@rosimport' href='#RobotOS.@rosimport'>#</a>
 <strong><code>RobotOS.@rosimport</code></strong> &mdash; <em>Macro</em>.</p>
-<div class="codehilite"><pre><span class="err">@</span><span class="n">rosimport</span>
-</pre></div>
+<pre class="codehilite"><code>@rosimport</code></pre>
 
 
 <p>Import ROS message or service types into Julia. Call <code>rostypegen()</code> after all <code>@rosimport</code> calls. Package or type dependencies are also imported automatically as needed.</p>
 <p>Example usages:</p>
-<div class="codehilite"><pre>  <span class="p">@</span><span class="n">rosimport</span> <span class="n">geometry_msgs</span><span class="o">.</span><span class="n">msg</span><span class="o">.</span><span class="n">PoseStamped</span>
-  <span class="p">@</span><span class="n">rosimport</span> <span class="n">sensor_msgs</span><span class="o">.</span><span class="n">msg</span><span class="p">:</span> <span class="n">Image</span><span class="p">,</span> <span class="n">Imu</span>
-  <span class="p">@</span><span class="n">rosimport</span> <span class="n">nav_msgs</span><span class="o">.</span><span class="n">srv</span><span class="o">.</span><span class="n">GetPlan</span>
-</pre></div>
+<pre class="codehilite"><code class="language-julia">  @rosimport geometry_msgs.msg.PoseStamped
+  @rosimport sensor_msgs.msg: Image, Imu
+  @rosimport nav_msgs.srv.GetPlan</code></pre>
 
 
 <p><a id='RobotOS.rostypegen' href='#RobotOS.rostypegen'>#</a>
 <strong><code>RobotOS.rostypegen</code></strong> &mdash; <em>Function</em>.</p>
-<div class="codehilite"><pre><span class="n">rostypegen</span><span class="p">(</span><span class="n">rosrootmod</span><span class="o">::</span><span class="n">Module</span><span class="o">=</span><span class="n">Main</span><span class="p">)</span>
-</pre></div>
+<pre class="codehilite"><code>rostypegen(rosrootmod::Module=Main)</code></pre>
 
 
 <p>Initiate the Julia type generation process after importing some ROS types. Creates modules in rootrosmod (default is <code>Main</code>) with the same behavior as imported ROS modules in python. Should only be called once, after all <code>@rosimport</code> statements are done.</p>
 <p><a id='RobotOS.rostypereset' href='#RobotOS.rostypereset'>#</a>
 <strong><code>RobotOS.rostypereset</code></strong> &mdash; <em>Function</em>.</p>
-<div class="codehilite"><pre><span class="n">rostypereset</span><span class="p">()</span>
-</pre></div>
+<pre class="codehilite"><code>rostypereset()</code></pre>
 
 
 <p>Clear out the previous <code>@rosimport</code>s, returning the type generation to its original state. Cannot do anything about already generated modules in <code>Main</code>.</p>
@@ -129,24 +126,21 @@
 <h2 id="publishing-and-subscribing">Publishing and Subscribing</h2>
 <p><a id='RobotOS.Publisher' href='#RobotOS.Publisher'>#</a>
 <strong><code>RobotOS.Publisher</code></strong> &mdash; <em>Type</em>.</p>
-<div class="codehilite"><pre><span class="n">Publisher</span><span class="p">{</span><span class="n">T</span><span class="p">}(</span><span class="n">topic</span><span class="p">;</span> <span class="n">kwargs</span><span class="p">...)</span>
-<span class="n">Publisher</span><span class="p">(</span><span class="n">topic</span><span class="p">,</span> <span class="n">T</span><span class="p">;</span> <span class="n">kwargs</span><span class="p">...)</span>
-</pre></div>
+<pre class="codehilite"><code>Publisher{T}(topic; kwargs...)
+Publisher(topic, T; kwargs...)</code></pre>
 
 
 <p>Create an object to publish messages of type <code>T</code> on a topic. Keyword arguments are directly passed to rospy.</p>
 <p><a id='RobotOS.publish' href='#RobotOS.publish'>#</a>
 <strong><code>RobotOS.publish</code></strong> &mdash; <em>Function</em>.</p>
-<div class="codehilite"><pre><span class="n">publish</span><span class="p">(</span><span class="n">p</span><span class="o">::</span><span class="n">Publisher</span><span class="p">{</span><span class="n">T</span><span class="p">},</span> <span class="n">msg</span><span class="o">::</span><span class="n">T</span><span class="p">)</span>
-</pre></div>
+<pre class="codehilite"><code>publish(p::Publisher{T}, msg::T)</code></pre>
 
 
 <p>Publish <code>msg</code> on <code>p</code>, a <code>Publisher</code> with matching message type.</p>
 <p><a id='RobotOS.Subscriber' href='#RobotOS.Subscriber'>#</a>
 <strong><code>RobotOS.Subscriber</code></strong> &mdash; <em>Type</em>.</p>
-<div class="codehilite"><pre><span class="n">Subscriber</span><span class="p">{</span><span class="n">T</span><span class="p">}(</span><span class="n">topic</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">cb_args</span><span class="o">=</span><span class="p">();</span> <span class="n">kwargs</span><span class="p">...)</span>
-<span class="n">Subscriber</span><span class="p">(</span><span class="n">topic</span><span class="p">,</span> <span class="n">T</span><span class="p">,</span> <span class="n">callback</span><span class="p">,</span> <span class="n">cb_args</span><span class="o">=</span><span class="p">();</span> <span class="n">kwargs</span><span class="p">...)</span>
-</pre></div>
+<pre class="codehilite"><code>Subscriber{T}(topic, callback, cb_args=(); kwargs...)
+Subscriber(topic, T, callback, cb_args=(); kwargs...)</code></pre>
 
 
 <p>Create a subscription to a topic with message type <code>T</code> with a callback to use when a message is received, which can be any callable type. Extra arguments provided to the callback when invoked can be provided in the <code>cb_args</code> tuple. Keyword arguments are directly passed to rospy.</p>
@@ -154,24 +148,21 @@
 <h2 id="services">Services</h2>
 <p><a id='RobotOS.Service' href='#RobotOS.Service'>#</a>
 <strong><code>RobotOS.Service</code></strong> &mdash; <em>Type</em>.</p>
-<div class="codehilite"><pre><span class="n">Service</span><span class="p">{</span><span class="n">T</span><span class="p">}(</span><span class="n">name</span><span class="p">,</span> <span class="n">callback</span><span class="p">;</span> <span class="n">kwargs</span><span class="p">...)</span>
-<span class="n">Service</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">T</span><span class="p">,</span> <span class="n">callback</span><span class="p">;</span> <span class="n">kwargs</span><span class="p">...)</span>
-</pre></div>
+<pre class="codehilite"><code>Service{T}(name, callback; kwargs...)
+Service(name, T, callback; kwargs...)</code></pre>
 
 
 <p>Create a service object that can receive requests and provide responses. The callback can be of any callable type. Keyword arguments are directly passed to rospy.</p>
 <p><a id='RobotOS.ServiceProxy' href='#RobotOS.ServiceProxy'>#</a>
 <strong><code>RobotOS.ServiceProxy</code></strong> &mdash; <em>Type</em>.</p>
-<div class="codehilite"><pre><span class="n">ServiceProxy</span><span class="p">{</span><span class="n">T</span><span class="p">}(</span><span class="n">name</span><span class="p">;</span> <span class="n">kwargs</span><span class="p">...)</span>
-<span class="n">ServiceProxy</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">T</span><span class="p">;</span> <span class="n">kwargs</span><span class="p">...)</span>
-</pre></div>
+<pre class="codehilite"><code>ServiceProxy{T}(name; kwargs...)
+ServiceProxy(name, T; kwargs...)</code></pre>
 
 
 <p>Create a proxy object used to invoke a remote service. Use <code>srv_proxy(msg_request)</code> with the object to invoke the service call. Keyword arguments are directly passed to rospy.</p>
 <p><a id='RobotOS.wait_for_service' href='#RobotOS.wait_for_service'>#</a>
 <strong><code>RobotOS.wait_for_service</code></strong> &mdash; <em>Function</em>.</p>
-<div class="codehilite"><pre><span class="n">wait_for_service</span><span class="p">(</span><span class="n">srv_name</span><span class="p">;</span> <span class="n">kwargs</span><span class="p">...)</span>
-</pre></div>
+<pre class="codehilite"><code>wait_for_service(srv_name; kwargs...)</code></pre>
 
 
 <p>Block until the specified service is available. Keyword arguments are directly passed to rospy. Throws an exception if the waiting timeout period is exceeded.</p>
@@ -179,22 +170,19 @@
 <h2 id="general-ros-functions">General ROS Functions</h2>
 <p><a id='RobotOS.init_node' href='#RobotOS.init_node'>#</a>
 <strong><code>RobotOS.init_node</code></strong> &mdash; <em>Function</em>.</p>
-<div class="codehilite"><pre><span class="n">init_node</span><span class="p">(</span><span class="n">name</span><span class="p">;</span> <span class="n">args</span><span class="p">...)</span>
-</pre></div>
+<pre class="codehilite"><code>init_node(name; args...)</code></pre>
 
 
 <p>Initialize this node, registering it with the ROS master. All arguments are passed on directly to the rospy init_node function.</p>
 <p><a id='RobotOS.is_shutdown' href='#RobotOS.is_shutdown'>#</a>
 <strong><code>RobotOS.is_shutdown</code></strong> &mdash; <em>Function</em>.</p>
-<div class="codehilite"><pre><span class="n">is_shutdown</span><span class="p">()</span>
-</pre></div>
+<pre class="codehilite"><code>is_shutdown()</code></pre>
 
 
 <p>Return the shutdown status of the node.</p>
 <p><a id='RobotOS.spin' href='#RobotOS.spin'>#</a>
 <strong><code>RobotOS.spin</code></strong> &mdash; <em>Function</em>.</p>
-<div class="codehilite"><pre><span class="n">spin</span><span class="p">()</span>
-</pre></div>
+<pre class="codehilite"><code>spin()</code></pre>
 
 
 <p>Block execution and process callbacks/service calls until the node is shut down.</p>
@@ -202,66 +190,57 @@
 <h2 id="time-handling">Time Handling</h2>
 <p><a id='RobotOS.Time' href='#RobotOS.Time'>#</a>
 <strong><code>RobotOS.Time</code></strong> &mdash; <em>Type</em>.</p>
-<div class="codehilite"><pre><span class="n">Time</span><span class="p">(</span><span class="n">secs</span><span class="p">,</span> <span class="n">nsecs</span><span class="p">),</span> <span class="n">Time</span><span class="p">(),</span> <span class="n">Time</span><span class="p">(</span><span class="n">t</span><span class="o">::</span><span class="n">Real</span><span class="p">)</span>
-</pre></div>
+<pre class="codehilite"><code>Time(secs, nsecs), Time(), Time(t::Real)</code></pre>
 
 
 <p>Object representing an absolute time from a fixed past reference point at nanosecond precision.</p>
 <p>Basic arithmetic can be performed on combinations of <code>Time</code> and <code>Duration</code> objects that make sense. For example, if <code>t::Time</code> and <code>d::Duration</code>, <code>t+d</code> will be a <code>Time</code>, <code>d+d</code> a <code>Duration</code>, <code>t-d</code> a <code>Time</code>, <code>d-d</code> a <code>Duration</code>, and <code>t-t</code> a <code>Duration</code>.</p>
 <p><a id='RobotOS.Duration' href='#RobotOS.Duration'>#</a>
 <strong><code>RobotOS.Duration</code></strong> &mdash; <em>Type</em>.</p>
-<div class="codehilite"><pre><span class="n">Duration</span><span class="p">(</span><span class="n">secs</span><span class="p">,</span> <span class="n">nsecs</span><span class="p">),</span> <span class="n">Duration</span><span class="p">(),</span> <span class="n">Duration</span><span class="p">(</span><span class="n">t</span><span class="o">::</span><span class="n">Real</span><span class="p">)</span>
-</pre></div>
+<pre class="codehilite"><code>Duration(secs, nsecs), Duration(), Duration(t::Real)</code></pre>
 
 
 <p>Object representing a relative period of time at nanosecond precision.</p>
 <p>Basic arithmetic can be performed on combinations of <code>Time</code> and <code>Duration</code> objects that make sense. For example, if <code>t::Time</code> and <code>d::Duration</code>, <code>t+d</code> will be a <code>Time</code>, <code>d+d</code> a <code>Duration</code>, <code>t-d</code> a <code>Time</code>, <code>d-d</code> a <code>Duration</code>, and <code>t-t</code> a <code>Duration</code>.</p>
 <p><a id='RobotOS.Rate' href='#RobotOS.Rate'>#</a>
 <strong><code>RobotOS.Rate</code></strong> &mdash; <em>Type</em>.</p>
-<div class="codehilite"><pre><span class="n">Rate</span><span class="p">(</span><span class="n">hz</span><span class="o">::</span><span class="n">Real</span><span class="p">),</span> <span class="n">Rate</span><span class="p">(</span><span class="n">d</span><span class="o">::</span><span class="n">Duration</span><span class="p">)</span>
-</pre></div>
+<pre class="codehilite"><code>Rate(hz::Real), Rate(d::Duration)</code></pre>
 
 
 <p>Used to allow a loop to run at a fixed rate. Construct with a frequency or <code>Duration</code> and use with <code>rossleep</code> or <code>sleep</code>. The rate object will record execution time of other work in the loop and modify the sleep time to compensate, keeping the loop rate as consistent as possible.</p>
 <p><a id='RobotOS.to_sec' href='#RobotOS.to_sec'>#</a>
 <strong><code>RobotOS.to_sec</code></strong> &mdash; <em>Function</em>.</p>
-<div class="codehilite"><pre><span class="n">to_sec</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
-</pre></div>
+<pre class="codehilite"><code>to_sec(t)</code></pre>
 
 
 <p>Return the value of a ROS time object in absolute seconds (with nanosecond precision)</p>
 <p><a id='RobotOS.to_nsec' href='#RobotOS.to_nsec'>#</a>
 <strong><code>RobotOS.to_nsec</code></strong> &mdash; <em>Function</em>.</p>
-<div class="codehilite"><pre><span class="n">to_nsec</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
-</pre></div>
+<pre class="codehilite"><code>to_nsec(t)</code></pre>
 
 
 <p>Return the value of a ROS time object in nanoseconds as an integer.</p>
 <p><a id='RobotOS.now' href='#RobotOS.now'>#</a>
 <strong><code>RobotOS.now</code></strong> &mdash; <em>Function</em>.</p>
-<div class="codehilite"><pre><span class="n">RobotOS</span><span class="p">.</span><span class="n">now</span><span class="p">()</span>
-</pre></div>
+<pre class="codehilite"><code>RobotOS.now()</code></pre>
 
 
 <p>Return the current ROS time as a <code>Time</code> object.</p>
 <p><a id='RobotOS.get_rostime' href='#RobotOS.get_rostime'>#</a>
 <strong><code>RobotOS.get_rostime</code></strong> &mdash; <em>Function</em>.</p>
-<div class="codehilite"><pre><span class="n">get_rostime</span><span class="p">()</span>
-</pre></div>
+<pre class="codehilite"><code>get_rostime()</code></pre>
 
 
 <p>Return the current ROS time as a <code>Time</code> object.</p>
 <p><a id='RobotOS.rossleep' href='#RobotOS.rossleep'>#</a>
 <strong><code>RobotOS.rossleep</code></strong> &mdash; <em>Function</em>.</p>
-<div class="codehilite"><pre><span class="n">rossleep</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
-</pre></div>
+<pre class="codehilite"><code>rossleep(t)</code></pre>
 
 
 <p>Sleep and process callbacks for a number of seconds implied by the type and value of <code>t</code>, which may be a real-value, a <code>Duration</code> object, or a <code>Rate</code> object.</p>
 <p><a id='Base.sleep' href='#Base.sleep'>#</a>
 <strong><code>Base.sleep</code></strong> &mdash; <em>Function</em>.</p>
-<div class="codehilite"><pre><span class="n">sleep</span><span class="p">(</span><span class="n">t</span><span class="o">::</span><span class="n">Duration</span><span class="p">),</span> <span class="n">sleep</span><span class="p">(</span><span class="n">t</span><span class="o">::</span><span class="n">Rate</span><span class="p">)</span>
-</pre></div>
+<pre class="codehilite"><code>sleep(t::Duration), sleep(t::Rate)</code></pre>
 
 
 <p>Call <code>rossleep</code> with a <code>Duration</code> or <code>Rate</code> object. Use <code>rossleep</code> to specify sleep time directly.</p>
@@ -269,29 +248,25 @@
 <h2 id="parameters">Parameters</h2>
 <p><a id='RobotOS.get_param' href='#RobotOS.get_param'>#</a>
 <strong><code>RobotOS.get_param</code></strong> &mdash; <em>Function</em>.</p>
-<div class="codehilite"><pre><span class="n">get_param</span><span class="p">(</span><span class="n">param_name</span><span class="p">,</span> <span class="k">default</span><span class="o">=</span><span class="n">nothing</span><span class="p">)</span>
-</pre></div>
+<pre class="codehilite"><code>get_param(param_name, default=nothing)</code></pre>
 
 
 <p>Request the value of a parameter from the parameter server, with optional default value. If no default is given, throws a <code>KeyError</code> if the parameter cannot be found.</p>
 <p><a id='RobotOS.set_param' href='#RobotOS.set_param'>#</a>
 <strong><code>RobotOS.set_param</code></strong> &mdash; <em>Function</em>.</p>
-<div class="codehilite"><pre><span class="n">set_param</span><span class="p">(</span><span class="n">param_name</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
-</pre></div>
+<pre class="codehilite"><code>set_param(param_name, val)</code></pre>
 
 
 <p>Set the value of a parameter on the parameter server.</p>
 <p><a id='RobotOS.has_param' href='#RobotOS.has_param'>#</a>
 <strong><code>RobotOS.has_param</code></strong> &mdash; <em>Function</em>.</p>
-<div class="codehilite"><pre><span class="n">has_param</span><span class="p">(</span><span class="n">param_name</span><span class="p">)</span>
-</pre></div>
+<pre class="codehilite"><code>has_param(param_name)</code></pre>
 
 
 <p>Return a boolean specifying if a parameter exists on the parameter server.</p>
 <p><a id='RobotOS.delete_param' href='#RobotOS.delete_param'>#</a>
 <strong><code>RobotOS.delete_param</code></strong> &mdash; <em>Function</em>.</p>
-<div class="codehilite"><pre><span class="n">delete_param</span><span class="p">(</span><span class="n">param_name</span><span class="p">)</span>
-</pre></div>
+<pre class="codehilite"><code>delete_param(param_name)</code></pre>
 
 
 <p>Delete a parameter from the parameter server. Throws a <code>KeyError</code> if no such parameter exists.</p>
@@ -299,36 +274,31 @@
 <h2 id="logging">Logging</h2>
 <p><a id='RobotOS.logdebug' href='#RobotOS.logdebug'>#</a>
 <strong><code>RobotOS.logdebug</code></strong> &mdash; <em>Function</em>.</p>
-<div class="codehilite"><pre><span class="n">logdebug</span><span class="p">,</span> <span class="n">loginfo</span><span class="p">,</span> <span class="n">logwarn</span><span class="p">,</span> <span class="n">logerr</span><span class="p">,</span> <span class="n">logfatal</span>
-</pre></div>
+<pre class="codehilite"><code>logdebug, loginfo, logwarn, logerr, logfatal</code></pre>
 
 
 <p>Call the rospy logging system at the corresponding message level, passing a message and other arguments directly.</p>
 <p><a id='RobotOS.loginfo' href='#RobotOS.loginfo'>#</a>
 <strong><code>RobotOS.loginfo</code></strong> &mdash; <em>Function</em>.</p>
-<div class="codehilite"><pre><span class="n">logdebug</span><span class="p">,</span> <span class="n">loginfo</span><span class="p">,</span> <span class="n">logwarn</span><span class="p">,</span> <span class="n">logerr</span><span class="p">,</span> <span class="n">logfatal</span>
-</pre></div>
+<pre class="codehilite"><code>logdebug, loginfo, logwarn, logerr, logfatal</code></pre>
 
 
 <p>Call the rospy logging system at the corresponding message level, passing a message and other arguments directly.</p>
 <p><a id='RobotOS.logwarn' href='#RobotOS.logwarn'>#</a>
 <strong><code>RobotOS.logwarn</code></strong> &mdash; <em>Function</em>.</p>
-<div class="codehilite"><pre><span class="n">logdebug</span><span class="p">,</span> <span class="n">loginfo</span><span class="p">,</span> <span class="n">logwarn</span><span class="p">,</span> <span class="n">logerr</span><span class="p">,</span> <span class="n">logfatal</span>
-</pre></div>
+<pre class="codehilite"><code>logdebug, loginfo, logwarn, logerr, logfatal</code></pre>
 
 
 <p>Call the rospy logging system at the corresponding message level, passing a message and other arguments directly.</p>
 <p><a id='RobotOS.logerr' href='#RobotOS.logerr'>#</a>
 <strong><code>RobotOS.logerr</code></strong> &mdash; <em>Function</em>.</p>
-<div class="codehilite"><pre><span class="n">logdebug</span><span class="p">,</span> <span class="n">loginfo</span><span class="p">,</span> <span class="n">logwarn</span><span class="p">,</span> <span class="n">logerr</span><span class="p">,</span> <span class="n">logfatal</span>
-</pre></div>
+<pre class="codehilite"><code>logdebug, loginfo, logwarn, logerr, logfatal</code></pre>
 
 
 <p>Call the rospy logging system at the corresponding message level, passing a message and other arguments directly.</p>
 <p><a id='RobotOS.logfatal' href='#RobotOS.logfatal'>#</a>
 <strong><code>RobotOS.logfatal</code></strong> &mdash; <em>Function</em>.</p>
-<div class="codehilite"><pre><span class="n">logdebug</span><span class="p">,</span> <span class="n">loginfo</span><span class="p">,</span> <span class="n">logwarn</span><span class="p">,</span> <span class="n">logerr</span><span class="p">,</span> <span class="n">logfatal</span>
-</pre></div>
+<pre class="codehilite"><code>logdebug, loginfo, logwarn, logerr, logfatal</code></pre>
 
 
 <p>Call the rospy logging system at the corresponding message level, passing a message and other arguments directly.</p></div>
@@ -336,13 +306,15 @@
 
         <footer class="col-md-12">
             <hr>
-            <p>Documentation built with <a href="http://www.mkdocs.org/">MkDocs</a>.</p>
+            <p>Documentation built with <a href="https://www.mkdocs.org/">MkDocs</a>.</p>
         </footer>
-        <script>var base_url = '..';</script>
-        <script src="../js/base.js"></script>
-        <script src="../assets/mathjaxhelper.js"></script>
-        <script src="../search/require.js"></script>
-        <script src="../search/search.js"></script>
+        <script>
+            var base_url = "..",
+                shortcuts = {"search": 83, "next": 78, "help": 191, "previous": 80};
+        </script>
+        <script src="../js/base.js" defer></script>
+        <script src="../assets/mathjaxhelper.js" defer></script>
+        <script src="../search/main.js" defer></script>
 
         <div class="modal" id="mkdocs_search_modal" tabindex="-1" role="dialog" aria-labelledby="Search Modal" aria-hidden="true">
     <div class="modal-dialog">
@@ -358,7 +330,7 @@
                 </p>
                 <form role="form">
                     <div class="form-group">
-                        <input type="text" class="form-control" placeholder="Search..." id="mkdocs-search-query">
+                        <input type="text" class="form-control" placeholder="Search..." id="mkdocs-search-query" title="Type search term here">
                     </div>
                 </form>
                 <div id="mkdocs-search-results"></div>
@@ -384,19 +356,19 @@
                 </thead>
                 <tbody>
                   <tr>
-                    <td><kbd>?</kbd></td>
+                    <td class="help shortcut"><kbd>?</kbd></td>
                     <td>Open this help</td>
                   </tr>
                   <tr>
-                    <td><kbd>&larr;</kbd></td>
-                    <td>Previous page</td>
-                  </tr>
-                  <tr>
-                    <td><kbd>&rarr;</kbd></td>
+                    <td class="next shortcut"><kbd>n</kbd></td>
                     <td>Next page</td>
                   </tr>
                   <tr>
-                    <td><kbd>s</kbd></td>
+                    <td class="prev shortcut"><kbd>p</kbd></td>
+                    <td>Previous page</td>
+                  </tr>
+                  <tr>
+                    <td class="search shortcut"><kbd>s</kbd></td>
                     <td>Search</td>
                   </tr>
                 </tbody>
@@ -407,7 +379,6 @@
         </div>
     </div>
 </div>
-
 
     </body>
 </html>
