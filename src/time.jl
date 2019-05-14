@@ -71,10 +71,10 @@ end
 *(tf::Real, td::Duration)     = Duration(tf*td.secs     , tf*td.nsecs)
 
 #PyObject conversions
-convert(::Type{Time},     o::PyObject) = Time(    o[:secs],o[:nsecs])
-convert(::Type{Duration}, o::PyObject) = Duration(o[:secs],o[:nsecs])
-convert(::Type{PyObject}, t::Time)     = __rospy__[:Time](    t.secs,t.nsecs)
-convert(::Type{PyObject}, t::Duration) = __rospy__[:Duration](t.secs,t.nsecs)
+convert(::Type{Time},     o::PyObject) = Time(    o.secs,o.nsecs)
+convert(::Type{Duration}, o::PyObject) = Duration(o.secs,o.nsecs)
+convert(::Type{PyObject}, t::Time)     = __rospy__.Time(    t.secs,t.nsecs)
+convert(::Type{PyObject}, t::Duration) = __rospy__.Duration(t.secs,t.nsecs)
 
 #Real number conversions
 """
@@ -117,7 +117,7 @@ Return the current ROS time as a `Time` object.
 """
 function get_rostime()
     t = try
-        __rospy__[:get_rostime]()
+        __rospy__.get_rostime()
     catch ex
         error(pycall(pybuiltin("str"), PyAny, ex.val))
     end
@@ -143,7 +143,7 @@ function rossleep(td::Duration)
     t0 = time_ns()
     while time_ns()-t0 < tnsecs
         yield()                   #Allow julia callback loops to run
-        __rospy__[:sleep](0.001)  #Allow rospy comm threads to run
+        __rospy__.sleep(0.001)  #Allow rospy comm threads to run
     end
 end
 rossleep(t::Real) = rossleep(Duration(t))

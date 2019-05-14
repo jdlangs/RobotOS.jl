@@ -46,16 +46,16 @@ dt = Duration(3,0)
 
 #PyObject stuff
 ptt = convert(PyCall.PyObject, tt)
-@test ptt[:secs] == 2
-@test ptt[:nsecs] == 0
-ptt[:nsecs] = 101
+@test ptt.secs == 2
+@test ptt.nsecs == 0
+ptt.nsecs = 101
 tt2 = convert(Time, ptt)
 @test to_nsec(tt2) == 2_000_000_101
 
 pdt = convert(PyCall.PyObject, dt)
-@test pdt[:secs] == 3
-@test pdt[:nsecs] == 0
-pdt[:nsecs] = 202
+@test pdt.secs == 3
+@test pdt.nsecs == 0
+pdt.nsecs = 202
 dt2 = convert(Duration, pdt)
 @test to_nsec(dt2) == 3_000_000_202
 

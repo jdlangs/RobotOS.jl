@@ -14,7 +14,7 @@ struct ServiceProxy{SrvType <: AbstractService}
     function ServiceProxy{ST}(name::AbstractString; kwargs...) where ST <: AbstractService
         @debug("Creating <$ST> service proxy for '$name'")
         rospycls = _get_rospy_class(ST)
-        new{ST}(__rospy__[:ServiceProxy](ascii(name), rospycls; kwargs...))
+        new{ST}(__rospy__.ServiceProxy(ascii(name), rospycls; kwargs...))
     end
 end
 
@@ -51,13 +51,13 @@ mutable struct Service{SrvType <: AbstractService}
         rospycls = _get_rospy_class(ST)
 
         cond = Base.AsyncCondition()
-        pysrv = _py_ros_callbacks["ServiceCallback"](CB_NOTIFY_PTR[], cond.handle)
+        pysrv = _py_ros_callbacks."ServiceCallback"(CB_NOTIFY_PTR[], cond.handle)
 
         srvobj = try
-            __rospy__[:Service](ascii(name), rospycls, pysrv["srv_cb"]; kwargs...)
+            __rospy__.Service(ascii(name), rospycls, pysrv."srv_cb"; kwargs...)
         catch err
             if isa(err, PyCall.PyError)
-                error("Problem during service creation: $(err.val[:args][1])")
+                error("Problem during service creation: $(err.val.args[1])")
             else
                 rethrow(err)
             end
@@ -85,7 +85,7 @@ Throws an exception if the waiting timeout period is exceeded.
 """
 function wait_for_service(service::AbstractString; kwargs...)
     try
-        __rospy__[:wait_for_service](ascii(service); kwargs...)
+        __rospy__.wait_for_service(ascii(service); kwargs...)
     catch ex
         error("Timeout exceeded waiting for service '$service'")
     end

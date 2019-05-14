@@ -175,12 +175,12 @@ if `myproxy` is a `ServiceProxy` object, it can be called with
 in the `RobotOS` module with the same syntax as in rospy.
 
 ### Message Constants
-Message constants may be accessed using `getindex` syntax. For example for
+Message constants may be accessed using `getproperty` syntax. For example for
 [visualization_msgs/Marker.msg](http://docs.ros.org/api/visualization_msgs/html/msg/Marker.html)
 we have:
 
     import .visualization_msgs.msg: Marker
-    Marker[:SPHERE] == getindex(Marker, :SPHERE) == 2   # true
+    Marker.SPHERE == getproperty(Marker, :SPHERE) == 2   # true
 
 ## ROS Integration
 
