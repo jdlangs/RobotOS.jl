@@ -1,0 +1,16 @@
+name = "RobotOS"
+uuid = "22415677-39a4-5241-a37a-00beabbbdae8"
+version = "0.7.1"
+
+[deps]
+PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
+
+[compat]
+PyCall = "≥ 1.90.0"
+julia = "≥ 0.7.0"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
