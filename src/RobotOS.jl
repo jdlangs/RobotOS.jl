@@ -15,6 +15,9 @@ include("pubsub.jl")
 include("services.jl")
 include("callbacks.jl")
 
+include("ros2/ROS2.jl")
+
+#=
 function __init__()
     #Put julia's ARGS into python's so remappings will work
     copy!(_py_sys, pyimport("sys"))
@@ -40,5 +43,6 @@ function __init__()
     #Compile the callback notify function, see callbacks.jl
     CB_NOTIFY_PTR[] = @cfunction(_callback_notify, Cint, (Ptr{Cvoid},))
 end
+=#
 
 end
