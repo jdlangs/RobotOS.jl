@@ -18,7 +18,9 @@ include("callbacks.jl")
 function __init__()
     #Put julia's ARGS into python's so remappings will work
     copy!(_py_sys, pyimport("sys"))
-    _py_sys."argv" = ARGS
+    if length(ARGS) > 0
+        _py_sys.argv = ARGS
+    end
 
     #Fill in empty PyObjects
     if ! (dirname(@__FILE__) in _py_sys."path")

@@ -1,3 +1,5 @@
+import PyCall
+
 #Test basic rospy interactions
 init_node("jltest", anonymous=true)
 
@@ -32,3 +34,9 @@ RobotOS.get_node_uri()
 RobotOS.get_caller_id()
 RobotOS.get_published_topics()
 RobotOS.get_ros_root()
+
+#Issue 73 - Corruption of Python sys.argv
+PyCall.py"""
+import argparse
+argparse.ArgumentParser()
+"""
