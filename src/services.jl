@@ -1,5 +1,5 @@
 #API for calling/creating services. Syntax is practically identical to rospy.
-export Service, ServiceProxy, wait_for_service
+export Service, ServiceProxy, wait_for_service, shutdown
 
 """
     ServiceProxy{T}(name; kwargs...)
@@ -89,4 +89,8 @@ function wait_for_service(service::AbstractString; kwargs...)
     catch ex
         error("Timeout exceeded waiting for service '$service'")
     end
+end
+
+function shutdown(s::Service{ST}) where ST <: AbstractService
+    pycall(s.srv_obj["shutdown"], Nothing)
 end
