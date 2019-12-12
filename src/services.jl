@@ -91,6 +91,10 @@ function wait_for_service(service::AbstractString; kwargs...)
     end
 end
 
+"""
+    shutdown(service_obj)
+Shut down the specified service.
+"""
 function shutdown(s::Service{ST}) where ST <: AbstractService
     pycall(s.srv_obj["shutdown"], Nothing)
 end
