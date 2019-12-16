@@ -1,3 +1,5 @@
+__precompile__(false)
+
 module RobotOS
 
 using PyCall
@@ -15,6 +17,8 @@ include("pubsub.jl")
 include("services.jl")
 include("callbacks.jl")
 
+include("ros2/ROS2.jl")
+
 function __init__()
     #Put julia's ARGS into python's so remappings will work
     copy!(_py_sys, pyimport("sys"))
@@ -27,7 +31,7 @@ function __init__()
     copy!(_py_ros_callbacks, pyimport("ros_callbacks"))
 
     try
-        copy!(__rospy__, pyimport("rospy"))
+        #copy!(__rospy__, pyimport("rospy"))
     catch ex
         if (isa(ex, PyCall.PyError) &&
             pycall(pybuiltin("str"), PyAny, ex.val) == "No module named rospy")

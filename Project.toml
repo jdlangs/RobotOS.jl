@@ -3,6 +3,8 @@ uuid = "22415677-39a4-5241-a37a-00beabbbdae8"
 version = "0.7.1"
 
 [deps]
+Clang = "40e3b903-d033-50b4-a0cc-940c62c95e31"
+LightXML = "9c8b4983-aa76-5018-a973-4c85ecc9e179"
 PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
 
 [compat]
