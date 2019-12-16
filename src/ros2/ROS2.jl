@@ -1,6 +1,7 @@
 module ROS2
 
 include("clang_wrap.jl")
+include("typegen.jl")
 
 struct Point
     x::Float64
