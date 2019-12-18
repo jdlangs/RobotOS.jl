@@ -96,5 +96,5 @@ end
 Shut down the specified service.
 """
 function shutdown(s::Service{ST}) where ST <: AbstractService
-    pycall(s.srv_obj["shutdown"], Nothing)
+    pycall(s.srv_obj.shutdown, Nothing)
 end
