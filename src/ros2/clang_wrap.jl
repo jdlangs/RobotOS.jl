@@ -17,11 +17,12 @@ function ament_pkg_prefix(pkg)
 end
 
 function ament_pkg_include_dir(pkg)
-    joinpath(ament_pkg_prefix(pkg), "include", pkg)
+    joinpath(ament_pkg_prefix(pkg), "include")
 end
 
 function ros_pkg_dependencies(pkg)
-    pkgxml = LightXML.parse_file(joinpath(ament_pkg_prefix(pkg), "share", pkg, "package.xml"))
+    xmlfile = joinpath(ament_pkg_prefix(pkg), "share", pkg, "package.xml")
+    pkgxml = LightXML.parse_file(xmlfile)
     xmlroot = LightXML.root(pkgxml)
     dep_elems = [xmlroot["depend"]; xmlroot["build_depend"]]
     [LightXML.content(elem) for elem in dep_elems]
@@ -29,8 +30,9 @@ end
 
 function wrap_rospkg(pkg)
     @info "Generating wrapper for ROS package '$pkg'"
-    include_dir = ament_pkg_include_dir(pkg)
-    headers = [joinpath(include_dir, header) for header in readdir(include_dir) if endswith(header, ".h")]
+    pkg_include_dir = ament_pkg_include_dir(pkg) #e.g., /opt/ros/eloquent/include
+    pkg_header_dir = joinpath(pkg_include_dir, pkg) #e.g., /opt/ros/eloquent/include/rcl
+    headers = [joinpath(pkg_header_dir, header) for header in readdir(pkg_header_dir) if endswith(header, ".h")]
 
     pkgdeps = ros_pkg_dependencies(pkg)
     dep_include_dirs = [ament_pkg_include_dir(pkg) for dep in pkgdeps]
@@ -40,7 +42,7 @@ function wrap_rospkg(pkg)
 
     # parse headers
     parse_headers!(ctx, headers,
-                   includes=[CLANG_INCLUDE; dep_include_dirs],
+                   includes=[CLANG_INCLUDE; pkg_include_dir; dep_include_dirs],
                   )
 
     # settings
@@ -49,8 +51,12 @@ function wrap_rospkg(pkg)
     ctx.options["is_struct_mutable"] = false
 
     # write output
-    api_file = joinpath(@__DIR__, "lib$(pkg)_api.jl")
+    output_dir = normpath(joinpath(@__DIR__, "..", "..", "roslibs")) # same level as src/
+    api_file = joinpath(output_dir, "lib$(pkg)_api.jl")
     api_stream = open(api_file, "w")
+    println(api_stream, "# Julia wrapper for ROS package '$pkg' API")
+    println(api_stream, "# Automatically generated using Clang.jl, do not edit manually")
+    println(api_stream, "# Use `wrap_rospkg` in `clang_wrap.jl` for regeneration")
 
     for trans_unit in ctx.trans_units
         root_cursor = getcursor(trans_unit)
@@ -77,18 +83,26 @@ function wrap_rospkg(pkg)
             wrap!(ctx, child)
         end
         @info "    writing $(api_file)"
-        println(api_stream, "# Julia wrapper for header: $(basename(header))")
-        println(api_stream, "# Automatically generated using Clang.jl\n")
+        println(api_stream)
+        println(api_stream, "# -----------------------------------------")
+        println(api_stream, "# Generated wrapper for $(basename(header))")
+        println(api_stream, "# -----------------------------------------")
         print_buffer(api_stream, ctx.api_buffer)
         empty!(ctx.api_buffer)  # clean up api_buffer for the next header
+        println(api_stream)
+        println(api_stream, "# -----------------------")
+        println(api_stream, "# end $(basename(header))")
+        println(api_stream, "# -----------------------")
     end
     close(api_stream)
 
     # write "common" definitions: types, typealiases, etc.
-    common_file = joinpath(@__DIR__, "lib$(pkg)_common.jl")
+    common_file = joinpath(output_dir, "lib$(pkg)_common.jl")
     @info "    writing $(common_file)"
     open(common_file, "w") do f
-        println(f, "# Automatically generated using Clang.jl\n")
+        println(f, "# Julia wrapper for ROS package '$pkg' common definitions")
+        println(f, "# Automatically generated using Clang.jl, do not edit manually")
+        println(f, "# Use `wrap_rospkg` in `clang_wrap.jl` for regeneration")
         print_buffer(f, dump_to_buffer(ctx.common_buffer))
     end
 end

@@ -1,5 +1,19 @@
 module ROS2
 
+# include generated roslib wrappers
+using CEnum
+
+include("extra_c_defs.jl")
+
+function include_roslib(libname::String)
+    include("../../roslibs/lib$(libname)_common.jl")
+    include("../../roslibs/lib$(libname)_api.jl")
+end
+
+include_roslib("rosidl_generator_c")
+include_roslib("rosidl_typesupport_introspection_c")
+
+# this package's code
 include("clang_wrap.jl")
 include("typegen.jl")
 
