@@ -17,12 +17,6 @@ include_roslib("rosidl_typesupport_introspection_c")
 include("clang_wrap.jl")
 include("typegen.jl")
 
-struct Point
-    x::Float64
-    y::Float64
-    z::Float64
-end
-
 function init()
     rcl_init(argc, argv, options, context)
     context
@@ -32,17 +26,23 @@ function shutdown(context)
     rcl_shutdown(context)
 end
 
-function mknode(context)
+function create_node(context)
     node = rcl_get_zero_initialized_node()
     rcl_node_init(node, name, namespace, context, options)
 end
 
-function mkpub(node)
+function spin(node)
+end
+
+function spin_once(node)
+end
+
+function create_publisher(node, msgtype, topic, qos_profile)
     publisher = rcl_get_zero_initialized_publisher()
     rcl_publisher_init(publisher, node, typesupport, topic_name, options)
 end
 
-function to_msg(pt::Point)
+function create_client(node, srvtype, srv_name)
 end
 
 function publish(pub, msg)
@@ -50,13 +50,13 @@ function publish(pub, msg)
 end
 
 function main()
-    context = init()
-    node = mknode()
-    pub = mkpub(node)
+    init()
+    node = create_node("rosjl_test")
+    pub = create_publisher(node)
 
     for i=1:10
-        pt = Point(1,2,3)
-        publish(pub, to_msg(pt))
+        pt = geometry_msgs.Point(1,2,3)
+        publish(pub, pt)
         sleep(1.0)
     end
 
