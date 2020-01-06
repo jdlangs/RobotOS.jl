@@ -15,3 +15,7 @@ const int_fast32_t = Int32
 const uint_fast8_t = UInt8
 const uint_fast16_t = UInt16
 const uint_fast32_t = UInt32
+
+const va_list = Cvoid
+
+const SIZE_MAX = 18446744073709551615

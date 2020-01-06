@@ -2,6 +2,8 @@ using Clang
 using PyCall
 import LightXML
 
+include("manual_wrappings.jl")
+
 function ament_pkg_prefix(pkg)
     ament_index_python = pyimport("ament_index_python")
     prefix = try
@@ -32,7 +34,16 @@ function wrap_rospkg(pkg)
     @info "Generating wrapper for ROS package '$pkg'"
     pkg_include_dir = ament_pkg_include_dir(pkg) #e.g., /opt/ros/eloquent/include
     pkg_header_dir = joinpath(pkg_include_dir, pkg) #e.g., /opt/ros/eloquent/include/rcl
-    headers = [joinpath(pkg_header_dir, header) for header in readdir(pkg_header_dir) if endswith(header, ".h")]
+
+    headers = String[]
+    for (root, dirs, files) in walkdir(pkg_header_dir)
+        for file in files
+            if endswith(file, ".h")
+                @info "  including header file: '$file'"
+                push!(headers, joinpath(root, file))
+            end
+        end
+    end
 
     pkgdeps = ros_pkg_dependencies(pkg)
     dep_include_dirs = [ament_pkg_include_dir(pkg) for dep in pkgdeps]
@@ -46,7 +57,7 @@ function wrap_rospkg(pkg)
                   )
 
     # settings
-    ctx.libname = "lib" * pkg
+    ctx.libname = "LIB" * uppercase(pkg)
     ctx.options["is_function_strictly_typed"] = true
     ctx.options["is_struct_mutable"] = false
 
@@ -57,6 +68,8 @@ function wrap_rospkg(pkg)
     println(api_stream, "# Julia wrapper for ROS package '$pkg' API")
     println(api_stream, "# Automatically generated using Clang.jl, do not edit manually")
     println(api_stream, "# Use `wrap_rospkg` in `clang_wrap.jl` for regeneration")
+
+    manual_wrappings = MANUAL_WRAPPINGS[pkg]
 
     for trans_unit in ctx.trans_units
         root_cursor = getcursor(trans_unit)
@@ -78,6 +91,12 @@ function wrap_rospkg(pkg)
             end
             if child_header != header
                 continue  # skip if cursor filename is not in the headers to be wrapped
+            end
+
+            # certain cursors require hand-coded wraps
+            if child_name in manual_wrappings
+                manual_wrap!(ctx, child, manual_wrappings[child_name])
+                continue
             end
 
             wrap!(ctx, child)
@@ -105,4 +124,7 @@ function wrap_rospkg(pkg)
         println(f, "# Use `wrap_rospkg` in `clang_wrap.jl` for regeneration")
         print_buffer(f, dump_to_buffer(ctx.common_buffer))
     end
+end
+
+function manual_wrap!(ctx, child::CLCursor, code)
 end

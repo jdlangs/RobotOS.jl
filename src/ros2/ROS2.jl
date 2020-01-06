@@ -12,14 +12,33 @@ end
 
 include_roslib("rosidl_generator_c")
 include_roslib("rosidl_typesupport_introspection_c")
+include_roslib("rcutils")
+include_roslib("rmw")
+include_roslib("rcl")
+
+# Circular definitions removed to here (TODO)
+const RCUTILS_STEADY_TIME = rcutils_steady_time_now #from rcutils_common
 
 # this package's code
 include("clang_wrap.jl")
 include("typegen.jl")
 
+const LIBRCL = :librcl
+
+function load()
+    librcl[] = Libdl.dlopen("librcl")
+end
+
+function unload()
+    Libdl.dlclose(librcl[])
+end
+
 function init()
+    argc = 0
+    argv = C_NULL
+    context = rcl_get_zero_initialized_context()
+    options = rcl_get_zero_initialized_options()
     rcl_init(argc, argv, options, context)
-    context
 end
 
 function shutdown(context)
