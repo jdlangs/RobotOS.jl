@@ -50,6 +50,10 @@ if flag[1]
 end
 empty!(msgs)
 
+##Check the service is properly shut down
+srv_fake = Service("fake", SetBool, (req)->SetBoolResponse())
+@test shutdown(srv_fake) == nothing
+
 #Test error handling
 @test_throws ErrorException wait_for_service("fake_srv", timeout=1.0)
 @test_throws ArgumentError srvcall(SetBoolResponse())
