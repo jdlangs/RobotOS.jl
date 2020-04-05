@@ -1,5 +1,9 @@
 export TransformListener, lookupTransform, waitForTransform
 
+"""
+    TransformListener()
+Create a transform listener object 
+"""
 struct TransformListener
     o::PyObject
     function TransformListener()
@@ -7,6 +11,10 @@ struct TransformListener
     end
 end
 
+"""
+    lookupTransform(tf_listener_obj, target, source, time) 
+Return tuple of (position, quaternion)
+"""
 function lookupTransform(tl::TransformListener,
                          target_frame::AbstractString,
                          source_frame::AbstractString,
@@ -15,6 +23,10 @@ function lookupTransform(tl::TransformListener,
     pycall(tl.o.lookupTransform, PyAny, target_frame, source_frame, time)
 end
 
+"""
+    waitForTransform(tf_listener_obj, target, source, time, timeout, pypolling_sleep_duration) 
+Waits for the given transformation to become available.  
+"""
 function waitForTransform(tl::TransformListener,
                           target_frame::AbstractString, 
                           source_frame::AbstractString,
