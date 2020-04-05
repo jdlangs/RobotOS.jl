@@ -6,6 +6,7 @@ using PyCall
 const _py_sys = PyCall.PyNULL()
 const _py_ros_callbacks = PyCall.PyNULL()
 const __rospy__ = PyCall.PyNULL()
+const __tf__ = PyCall.PyNULL()
 
 include("debug.jl")
 include("time.jl")
@@ -14,6 +15,7 @@ include("rospy.jl")
 include("pubsub.jl")
 include("services.jl")
 include("callbacks.jl")
+include("tf.jl")
 
 function __init__()
     #Put julia's ARGS into python's so remappings will work
@@ -27,6 +29,8 @@ function __init__()
         pushfirst!(_py_sys."path", dirname(@__FILE__))
     end
     copy!(_py_ros_callbacks, pyimport("ros_callbacks"))
+
+    copy!(__tf__, pyimport("tf"))
 
     try
         copy!(__rospy__, pyimport("rospy"))
