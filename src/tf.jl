@@ -20,7 +20,15 @@ function lookupTransform(tl::TransformListener,
                          source_frame::AbstractString,
                          pytime::Time)
     time = convert(PyObject, pytime)
-    pycall(tl.o.lookupTransform, PyAny, target_frame, source_frame, time)
+    transform = try
+        pycall(tl.o.lookupTransform, PyAny, target_frame, source_frame, time)
+    catch err
+        if isa(err, PyCall.PyError)
+            error("LookupException: $(err.val.args[1])")
+        else
+            rethrow(err)
+        end
+    end
 end
 
 """
@@ -36,6 +44,14 @@ function waitForTransform(tl::TransformListener,
     time = convert(PyObject, pytime)
     timeout = convert(PyObject, pytimeout)
     polling_sleep_duration = convert(PyObject, pypolling_sleep_duration)
-    pycall(tl.o.waitForTransform, PyAny, target_frame, source_frame,
-           time, timeout, polling_sleep_duration)
+    try
+        pycall(tl.o.waitForTransform, PyAny, target_frame, source_frame,
+               time, timeout, polling_sleep_duration)
+    catch err
+        if isa(err, PyCall.PyError)
+            error("TransformException: $(err.val.args[1])")
+        else
+            rethrow(err)
+        end
+    end
 end
