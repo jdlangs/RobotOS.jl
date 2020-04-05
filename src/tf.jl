@@ -1,4 +1,4 @@
-export TransformListener, lookupTransform
+export TransformListener, lookupTransform, waitForTransform
 
 struct TransformListener
     o::PyObject
@@ -10,8 +10,20 @@ end
 function lookupTransform(tl::TransformListener,
                          target_frame::AbstractString,
                          source_frame::AbstractString,
-                         pyt::Time)
-    t = convert(PyObject, pyt)
-    tl.o.lookupTransform(target_frame, source_frame, t)
-    pycall(tl.o.lookupTransform, PyAny, target_frame, source_frame, t)
+                         pytime::Time)
+    time = convert(PyObject, pytime)
+    pycall(tl.o.lookupTransform, PyAny, target_frame, source_frame, time)
+end
+
+function waitForTransform(tl::TransformListener,
+                          target_frame::AbstractString, 
+                          source_frame::AbstractString,
+                          pytime::Time,
+                          pytimeout::Duration;
+                          pypolling_sleep_duration = Duration(0.01))
+    time = convert(PyObject, pytime)
+    timeout = convert(PyObject, pytimeout)
+    polling_sleep_duration = convert(PyObject, pypolling_sleep_duration)
+    pycall(tl.o.waitForTransform, PyAny, target_frame, source_frame,
+           time, timeout, polling_sleep_duration)
 end
