@@ -2,7 +2,7 @@ export TransformListener, lookupTransform, waitForTransform
 
 """
     TransformListener()
-Create a transform listener object 
+Create a transform listener object.
 """
 struct TransformListener
     o::PyObject
@@ -13,7 +13,7 @@ end
 
 """
     generate_error_message(err) 
-Retrun error message string which include noth exception type and error massage information
+Retrun error message string which includes both exception type and error massage information.
 """
 function generate_error_message(err)
     exception_type = err.T.__name__
@@ -22,7 +22,7 @@ end
 
 """
     lookupTransform(tf_listener_obj, target, source, time) 
-Return tuple of (position, quaternion)
+Return tuple of (position, quaternion).
 """
 function lookupTransform(tl::TransformListener,
                          target_frame::AbstractString,
