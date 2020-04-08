@@ -15,7 +15,7 @@ before_install:
   - sudo apt-add-repository -y "deb http://packages.ros.org/ros/ubuntu xenial main"
   - wget https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -O - | sudo apt-key add -
   - sudo apt-get update
-  - sudo apt-get -y install ros-kinetic-ros-base ros-kinetic-common-msgs
+  - sudo apt-get -y install ros-kinetic-ros-base ros-kinetic-common-msgs ros-kinetic-tf2-ros ros-kinetic-tf
   - sudo rosdep init
   - rosdep update
 before_script:
