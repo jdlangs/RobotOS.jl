@@ -10,7 +10,7 @@ function __init__()
     copy!(__tf__, pyimport("tf"))
 end
 
-export Transform, TransformListener, lookupTransform, waitForTransform
+export Transform, TransformBroadcaster, sendTransform, TransformListener, lookupTransform, waitForTransform
 
 struct Transform
     trans::Array{Float64}
@@ -19,6 +19,23 @@ end
 
 Base.:(==)(tf1::Transform, tf2::Transform) = (tf1.trans == tf2.trans && tf1.rot == tf2.rot)
 
+struct TransformBroadcaster
+    o::PyObject
+    function TransformBroadcaster()
+        new(__tf__.TransformBroadcaster())
+    end
+end
+
+function sendTransform(tb::TransformBroadcaster,
+                       transform::Transform, 
+                       pytime::Time,
+                       child_frame::AbstractString, 
+                       parent_frame::AbstractString)
+    trans = transform.trans
+    rot = transform.rot
+    time = convert(PyObject, pytime)
+    pycall(tb.o.sendTransform, PyAny, trans, rot, time, child_frame, parent_frame)
+end
 
 """
     TransformListener()
