@@ -2,6 +2,7 @@ module TF
 
 using RobotOS
 using PyCall
+import Base.==
 
 const __tf__ = PyCall.PyNULL()
 
@@ -15,6 +16,9 @@ struct Transform
     trans::Array{Float64}
     rot::Array{Float64}
 end
+
+Base.:(==)(tf1::Transform, tf2::Transform) = (tf1.trans == tf2.trans && tf1.rot == tf2.rot)
+
 
 """
     TransformListener()
