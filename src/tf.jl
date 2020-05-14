@@ -9,7 +9,12 @@ function __init__()
     copy!(__tf__, pyimport("tf"))
 end
 
-export TransformListener, lookupTransform, waitForTransform
+export Transform, TransformListener, lookupTransform, waitForTransform
+
+struct Transform
+    trans::Array{Float64}
+    rot::Array{Float64}
+end
 
 """
     TransformListener()
@@ -40,8 +45,9 @@ function lookupTransform(tl::TransformListener,
                          source_frame::AbstractString,
                          pytime::Time)
     time = convert(PyObject, pytime)
-    transform = try
-        pycall(tl.o.lookupTransform, PyAny, target_frame, source_frame, time)
+    try
+        trans, rot = pycall(tl.o.lookupTransform, PyAny, target_frame, source_frame, time)
+        return Transform(trans, rot)
     catch err
         if isa(err, PyCall.PyError)
             error_massage = generate_error_message(err)
