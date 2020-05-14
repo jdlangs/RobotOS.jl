@@ -12,13 +12,20 @@ end
 
 export Transform, TransformBroadcaster, sendTransform, TransformListener, lookupTransform, waitForTransform
 
+""" 
+   Transform(trans, rot)
+Create transform object. 
+"""
 struct Transform
     trans::Array{Float64}
     rot::Array{Float64}
 end
-
 Base.:(==)(tf1::Transform, tf2::Transform) = (tf1.trans == tf2.trans && tf1.rot == tf2.rot)
 
+"""
+    TransformBroadcaster()
+Create a transform broadcaster object.
+"""
 struct TransformBroadcaster
     o::PyObject
     function TransformBroadcaster()
@@ -26,6 +33,10 @@ struct TransformBroadcaster
     end
 end
 
+"""
+    sendTransform(tf_broadcaster_obj, transform, time, child_frame, parent_frame)
+Broadcast the transformation from tf frame child to parent on ROS topic "/tf". 
+"""
 function sendTransform(tb::TransformBroadcaster,
                        transform::Transform, 
                        pytime::Time,
