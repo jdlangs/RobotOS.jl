@@ -6,7 +6,6 @@ using PyCall
 const _py_sys = PyCall.PyNULL()
 const _py_ros_callbacks = PyCall.PyNULL()
 const __rospy__ = PyCall.PyNULL()
-const __tf__ = PyCall.PyNULL()
 
 include("debug.jl")
 include("time.jl")
@@ -29,8 +28,6 @@ function __init__()
         pushfirst!(_py_sys."path", dirname(@__FILE__))
     end
     copy!(_py_ros_callbacks, pyimport("ros_callbacks"))
-
-    copy!(__tf__, pyimport("tf"))
 
     try
         copy!(__rospy__, pyimport("rospy"))

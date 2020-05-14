@@ -1,3 +1,14 @@
+module TF
+
+using RobotOS
+using PyCall
+
+const __tf__ = PyCall.PyNULL()
+
+function __init__()
+    copy!(__tf__, pyimport("tf"))
+end
+
 export TransformListener, lookupTransform, waitForTransform
 
 """
@@ -65,4 +76,6 @@ function waitForTransform(tl::TransformListener,
             rethrow(err)
         end
     end
+end
+
 end
