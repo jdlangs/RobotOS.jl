@@ -27,7 +27,7 @@ extra sentence in this README.
 
 Currently, `Pkg.test("RobotOS")` requires some bootstrapping to work properly.
 Before running Julia, make sure a ROS master is running and start the helper
-node by running the `test/echonode.py` file.
+node by running the `test/echonode.py` and `test/tfbroadcastnode.jl` file.
 
 ## Usage: Type Generation
 

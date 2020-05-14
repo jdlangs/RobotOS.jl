@@ -1,4 +1,52 @@
-export TransformListener, lookupTransform, waitForTransform
+module TF
+
+using RobotOS
+using PyCall
+import Base.==
+
+const __tf__ = PyCall.PyNULL()
+
+function __init__()
+    copy!(__tf__, pyimport("tf"))
+end
+
+export Transform, TransformBroadcaster, sendTransform, TransformListener, lookupTransform, waitForTransform
+
+""" 
+   Transform(trans, rot)
+Create transform object. 
+"""
+struct Transform
+    trans::Array{Float64}
+    rot::Array{Float64}
+end
+Base.:(==)(tf1::Transform, tf2::Transform) = (tf1.trans == tf2.trans && tf1.rot == tf2.rot)
+
+"""
+    TransformBroadcaster()
+Create a transform broadcaster object.
+"""
+struct TransformBroadcaster
+    o::PyObject
+    function TransformBroadcaster()
+        new(__tf__.TransformBroadcaster())
+    end
+end
+
+"""
+    sendTransform(tf_broadcaster_obj, transform, time, child_frame, parent_frame)
+Broadcast the transformation from tf frame child to parent on ROS topic "/tf". 
+"""
+function sendTransform(tb::TransformBroadcaster,
+                       transform::Transform, 
+                       pytime::Time,
+                       child_frame::AbstractString, 
+                       parent_frame::AbstractString)
+    trans = transform.trans
+    rot = transform.rot
+    time = convert(PyObject, pytime)
+    pycall(tb.o.sendTransform, PyAny, trans, rot, time, child_frame, parent_frame)
+end
 
 """
     TransformListener()
@@ -29,8 +77,9 @@ function lookupTransform(tl::TransformListener,
                          source_frame::AbstractString,
                          pytime::Time)
     time = convert(PyObject, pytime)
-    transform = try
-        pycall(tl.o.lookupTransform, PyAny, target_frame, source_frame, time)
+    try
+        trans, rot = pycall(tl.o.lookupTransform, PyAny, target_frame, source_frame, time)
+        return Transform(trans, rot)
     catch err
         if isa(err, PyCall.PyError)
             error_massage = generate_error_message(err)
@@ -65,4 +114,6 @@ function waitForTransform(tl::TransformListener,
             rethrow(err)
         end
     end
+end
+
 end
