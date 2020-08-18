@@ -16,17 +16,13 @@ const RCL_SHORT_PARAM_FLAG = "-p"
 const RCL_PARAM_FILE_FLAG = "--params-file"
 const RCL_REMAP_FLAG = "--remap"
 const RCL_SHORT_REMAP_FLAG = "-r"
+const RCL_ENCLAVE_FLAG = "--enclave"
+const RCL_SHORT_ENCLAVE_FLAG = "-e"
 const RCL_LOG_LEVEL_FLAG = "--log-level"
 const RCL_EXTERNAL_LOG_CONFIG_FLAG = "--log-config-file"
 const RCL_LOG_STDOUT_FLAG_SUFFIX = "stdout-logs"
 const RCL_LOG_ROSOUT_FLAG_SUFFIX = "rosout-logs"
 const RCL_LOG_EXT_LIB_FLAG_SUFFIX = "external-lib-logs"
-const RCL_LOG_LEVEL_ARG_RULE = "__log_level:="
-const RCL_EXTERNAL_LOG_CONFIG_ARG_RULE = "__log_config_file:="
-const RCL_LOG_DISABLE_STDOUT_ARG_RULE = "__log_disable_stdout:="
-const RCL_LOG_DISABLE_ROSOUT_ARG_RULE = "__log_disable_rosout:="
-const RCL_LOG_DISABLE_EXT_LIB_ARG_RULE = "__log_disable_external_lib:="
-const RCL_PARAM_FILE_ARG_RULE = "__params:="
 const rcl_arguments_impl_t = Cvoid
 
 struct rcl_arguments_t
@@ -56,6 +52,7 @@ struct rcl_context_t
     instance_id_storage::NTuple{8, UInt8}
 end
 
+const RCL_DEFAULT_DOMAIN_ID = RMW_DEFAULT_DOMAIN_ID
 const rcl_initialize_error_handling_thread_local_storage = rcutils_initialize_error_handling_thread_local_storage
 const rcl_set_error_state = rcutils_set_error_state
 
@@ -74,15 +71,17 @@ const rcl_error_string_t = rcutils_error_string_t
 @cenum rcl_publisher_event_type_t::UInt32 begin
     RCL_PUBLISHER_OFFERED_DEADLINE_MISSED = 0
     RCL_PUBLISHER_LIVELINESS_LOST = 1
+    RCL_PUBLISHER_OFFERED_INCOMPATIBLE_QOS = 2
 end
 
 @cenum rcl_subscription_event_type_t::UInt32 begin
     RCL_SUBSCRIPTION_REQUESTED_DEADLINE_MISSED = 0
     RCL_SUBSCRIPTION_LIVELINESS_CHANGED = 1
+    RCL_SUBSCRIPTION_REQUESTED_INCOMPATIBLE_QOS = 2
 end
 
 
-#const rmw_event_t = Cvoid
+const rmw_event_t = Cvoid
 const rcl_event_impl_t = Cvoid
 
 struct rcl_event_t
@@ -90,7 +89,11 @@ struct rcl_event_t
 end
 
 const rcl_get_zero_initialized_names_and_types = rmw_get_zero_initialized_names_and_types
+const rcl_get_zero_initialized_topic_endpoint_info_array = rmw_get_zero_initialized_topic_endpoint_info_array
+const rcl_topic_endpoint_info_array_fini = rmw_topic_endpoint_info_array_fini
 const rcl_names_and_types_t = rmw_names_and_types_t
+const rcl_topic_endpoint_info_t = rmw_topic_endpoint_info_t
+const rcl_topic_endpoint_info_array_t = rmw_topic_endpoint_info_array_t
 const rcl_guard_condition_impl_t = Cvoid
 
 struct rcl_guard_condition_t
@@ -141,7 +144,9 @@ struct rcl_lexer_lookahead2_t
     impl::Ptr{rcl_lexer_lookahead2_impl_t}
 end
 
-# Skipping MacroDefinition: RCL_WARN_UNUSED __attribute__ ( ( warn_unused_result ) )
+const rcl_logging_output_handler_t = rcutils_logging_output_handler_t
+const RCL_WARN_UNUSED = RCUTILS_WARN_UNUSED
+
 # Skipping MacroDefinition: RCL_UNUSED ( x ) ( void ) ( x )
 
 const rcl_node_impl_t = Cvoid
@@ -151,13 +156,14 @@ struct rcl_node_t
     impl::Ptr{rcl_node_impl_t}
 end
 
-const RCL_NODE_OPTIONS_DEFAULT_DOMAIN_ID = SIZE_MAX
+const RCL_NODE_OPTIONS_DEFAULT_DOMAIN_ID = RCL_DEFAULT_DOMAIN_ID
 
 struct rcl_node_options_t
     domain_id::Csize_t
     allocator::rcl_allocator_t
     use_global_arguments::Bool
     arguments::rcl_arguments_t
+    enable_rosout::Bool
 end
 
 const rcl_publisher_impl_t = Cvoid
@@ -178,9 +184,10 @@ struct rcl_remap_t
     impl::Ptr{rcl_remap_impl_t}
 end
 
-const ROS_SECURITY_NODE_DIRECTORY_VAR_NAME = "ROS_SECURITY_NODE_DIRECTORY"
-const ROS_SECURITY_ROOT_DIRECTORY_VAR_NAME = "ROS_SECURITY_ROOT_DIRECTORY"
-const ROS_SECURITY_LOOKUP_TYPE_VAR_NAME = "ROS_SECURITY_LOOKUP_TYPE"
+const ROS_SECURITY_ENCLAVE_OVERRIDE = "ROS_SECURITY_ENCLAVE_OVERRIDE"
+const ROS_SECURITY_KEYSTORE_VAR_NAME = "ROS_SECURITY_KEYSTORE"
+const ROS_SECURITY_STRATEGY_VAR_NAME = "ROS_SECURITY_STRATEGY"
+const ROS_SECURITY_ENABLE_VAR_NAME = "ROS_SECURITY_ENABLE"
 const rcl_service_impl_t = Cvoid
 
 struct rcl_service_t
@@ -204,12 +211,12 @@ struct rcl_subscription_options_t
     rmw_subscription_options::rmw_subscription_options_t
 end
 
-#const RCL_S_TO_NS = RCUTILS_S_TO_NS
-#const RCL_MS_TO_NS = RCUTILS_MS_TO_NS
-#const RCL_US_TO_NS = RCUTILS_US_TO_NS
-#const RCL_NS_TO_S = RCUTILS_NS_TO_S
-#const RCL_NS_TO_MS = RCUTILS_NS_TO_MS
-#const RCL_NS_TO_US = RCUTILS_NS_TO_US
+const RCL_S_TO_NS = RCUTILS_S_TO_NS
+const RCL_MS_TO_NS = RCUTILS_MS_TO_NS
+const RCL_US_TO_NS = RCUTILS_US_TO_NS
+const RCL_NS_TO_S = RCUTILS_NS_TO_S
+const RCL_NS_TO_MS = RCUTILS_NS_TO_MS
+const RCL_NS_TO_US = RCUTILS_NS_TO_US
 const rcl_time_point_value_t = rcutils_time_point_value_t
 const rcl_duration_value_t = rcutils_duration_value_t
 
@@ -311,6 +318,15 @@ const RCL_RET_EVENT_INVALID = 2000
 const RCL_RET_EVENT_TAKE_FAILED = 2001
 const rcl_ret_t = rmw_ret_t
 const rcl_serialized_message_t = rmw_serialized_message_t
+const RCL_ENCLAVE_NAME_VALID = RMW_NAMESPACE_VALID
+const RCL_ENCLAVE_NAME_INVALID_IS_EMPTY_STRING = RMW_NAMESPACE_INVALID_IS_EMPTY_STRING
+const RCL_ENCLAVE_NAME_INVALID_NOT_ABSOLUTE = RMW_NAMESPACE_INVALID_NOT_ABSOLUTE
+const RCL_ENCLAVE_NAME_INVALID_ENDS_WITH_FORWARD_SLASH = RMW_NAMESPACE_INVALID_ENDS_WITH_FORWARD_SLASH
+const RCL_ENCLAVE_NAME_INVALID_CONTAINS_UNALLOWED_CHARACTERS = RMW_NAMESPACE_INVALID_CONTAINS_UNALLOWED_CHARACTERS
+const RCL_ENCLAVE_NAME_INVALID_CONTAINS_REPEATED_FORWARD_SLASH = RMW_NAMESPACE_INVALID_CONTAINS_REPEATED_FORWARD_SLASH
+const RCL_ENCLAVE_NAME_INVALID_NAME_TOKEN_STARTS_WITH_NUMBER = RMW_NAMESPACE_INVALID_NAME_TOKEN_STARTS_WITH_NUMBER
+const RCL_ENCLAVE_NAME_INVALID_TOO_LONG = RMW_NAMESPACE_INVALID_TOO_LONG
+const RCL_ENCLAVE_NAME_MAX_LENGTH = RMW_NODE_NAME_MAX_NAME_LENGTH
 const RCL_TOPIC_NAME_VALID = 0
 const RCL_TOPIC_NAME_INVALID_IS_EMPTY_STRING = 1
 const RCL_TOPIC_NAME_INVALID_ENDS_WITH_FORWARD_SLASH = 2

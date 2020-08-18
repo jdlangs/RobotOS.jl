@@ -172,7 +172,7 @@ const RclLogFilter = Ptr{Cvoid}
 # Skipping MacroDefinition: RCUTILS_NS_TO_MS ( nanoseconds ) ( nanoseconds / ( 1000LL * 1000LL ) )
 # Skipping MacroDefinition: RCUTILS_NS_TO_US ( nanoseconds ) ( nanoseconds / 1000LL )
 
-const RCUTILS_STEADY_TIME = rcutils_steady_time_now
+#const RCUTILS_STEADY_TIME = rcutils_steady_time_now
 const rcutils_time_point_value_t = Int64
 const rcutils_duration_value_t = Int64
 

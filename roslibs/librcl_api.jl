@@ -46,9 +46,9 @@ function rcl_arguments_get_param_files(arguments, allocator::rcl_allocator_t, pa
     ccall((:rcl_arguments_get_param_files, LIBRCL), rcl_ret_t, (Ptr{rcl_arguments_t}, rcl_allocator_t, Ptr{Ptr{Cstring}}), arguments, allocator, parameter_files)
 end
 
-#function rcl_arguments_get_param_overrides(arguments, parameter_overrides)
-    #ccall((:rcl_arguments_get_param_overrides, LIBRCL), rcl_ret_t, (Ptr{rcl_arguments_t}, Ptr{Ptr{rcl_params_t}}), arguments, parameter_overrides)
-#end
+function rcl_arguments_get_param_overrides(arguments, parameter_overrides)
+    ccall((:rcl_arguments_get_param_overrides, LIBRCL), rcl_ret_t, (Ptr{rcl_arguments_t}, Ptr{Ptr{rcl_params_t}}), arguments, parameter_overrides)
+end
 
 function rcl_remove_ros_arguments(argv, args, allocator::rcl_allocator_t, nonros_argc, nonros_argv)
     ccall((:rcl_remove_ros_arguments, LIBRCL), rcl_ret_t, (Ptr{Cstring}, Ptr{rcl_arguments_t}, rcl_allocator_t, Ptr{Cint}, Ptr{Ptr{Cstring}}), argv, args, allocator, nonros_argc, nonros_argv)
@@ -88,6 +88,10 @@ end
 
 function rcl_send_request(client, ros_request, sequence_number)
     ccall((:rcl_send_request, LIBRCL), rcl_ret_t, (Ptr{rcl_client_t}, Ptr{Cvoid}, Ptr{Int64}), client, ros_request, sequence_number)
+end
+
+function rcl_take_response_with_info(client, request_header, ros_response)
+    ccall((:rcl_take_response_with_info, LIBRCL), rcl_ret_t, (Ptr{rcl_client_t}, Ptr{rmw_service_info_t}, Ptr{Cvoid}), client, request_header, ros_response)
 end
 
 function rcl_take_response(client, request_header, ros_response)
@@ -144,6 +148,18 @@ end
 
 # -----------------------
 # end context.h
+# -----------------------
+
+# -----------------------------------------
+# Generated wrapper for domain_id.h
+# -----------------------------------------
+
+function rcl_get_default_domain_id(domain_id)
+    ccall((:rcl_get_default_domain_id, LIBRCL), rcl_ret_t, (Ptr{Csize_t},), domain_id)
+end
+
+# -----------------------
+# end domain_id.h
 # -----------------------
 
 # -----------------------------------------
@@ -242,12 +258,24 @@ function rcl_get_node_names(node, allocator::rcl_allocator_t, node_names, node_n
     ccall((:rcl_get_node_names, LIBRCL), rcl_ret_t, (Ptr{rcl_node_t}, rcl_allocator_t, Ptr{rcutils_string_array_t}, Ptr{rcutils_string_array_t}), node, allocator, node_names, node_namespaces)
 end
 
+function rcl_get_node_names_with_enclaves(node, allocator::rcl_allocator_t, node_names, node_namespaces, enclaves)
+    ccall((:rcl_get_node_names_with_enclaves, LIBRCL), rcl_ret_t, (Ptr{rcl_node_t}, rcl_allocator_t, Ptr{rcutils_string_array_t}, Ptr{rcutils_string_array_t}, Ptr{rcutils_string_array_t}), node, allocator, node_names, node_namespaces, enclaves)
+end
+
 function rcl_count_publishers(node, topic_name, count)
     ccall((:rcl_count_publishers, LIBRCL), rcl_ret_t, (Ptr{rcl_node_t}, Cstring, Ptr{Csize_t}), node, topic_name, count)
 end
 
 function rcl_count_subscribers(node, topic_name, count)
     ccall((:rcl_count_subscribers, LIBRCL), rcl_ret_t, (Ptr{rcl_node_t}, Cstring, Ptr{Csize_t}), node, topic_name, count)
+end
+
+function rcl_get_publishers_info_by_topic(node, allocator, topic_name, no_mangle::Bool, publishers_info)
+    ccall((:rcl_get_publishers_info_by_topic, LIBRCL), rcl_ret_t, (Ptr{rcl_node_t}, Ptr{rcutils_allocator_t}, Cstring, Bool, Ptr{rcl_topic_endpoint_info_array_t}), node, allocator, topic_name, no_mangle, publishers_info)
+end
+
+function rcl_get_subscriptions_info_by_topic(node, allocator, topic_name, no_mangle::Bool, subscriptions_info)
+    ccall((:rcl_get_subscriptions_info_by_topic, LIBRCL), rcl_ret_t, (Ptr{rcl_node_t}, Ptr{rcutils_allocator_t}, Cstring, Bool, Ptr{rcl_topic_endpoint_info_array_t}), node, allocator, topic_name, no_mangle, subscriptions_info)
 end
 
 function rcl_service_server_is_available(node, client, is_available)
@@ -338,6 +366,10 @@ function rcl_init_options_get_rmw_init_options(init_options)
     ccall((:rcl_init_options_get_rmw_init_options, LIBRCL), Ptr{rmw_init_options_t}, (Ptr{rcl_init_options_t},), init_options)
 end
 
+function rcl_init_options_get_allocator(init_options)
+    ccall((:rcl_init_options_get_allocator, LIBRCL), Ptr{rcl_allocator_t}, (Ptr{rcl_init_options_t},), init_options)
+end
+
 # -----------------------
 # end init_options.h
 # -----------------------
@@ -398,8 +430,8 @@ end
 # Generated wrapper for localhost.h
 # -----------------------------------------
 
-function rcl_localhost_only()
-    ccall((:rcl_localhost_only, LIBRCL), Bool, ())
+function rcl_get_localhost_only(localhost_only)
+    ccall((:rcl_get_localhost_only, LIBRCL), rcl_ret_t, (Ptr{rmw_localhost_only_t},), localhost_only)
 end
 
 # -----------------------
@@ -414,12 +446,20 @@ function rcl_logging_configure(global_args, allocator)
     ccall((:rcl_logging_configure, LIBRCL), rcl_ret_t, (Ptr{rcl_arguments_t}, Ptr{rcl_allocator_t}), global_args, allocator)
 end
 
+function rcl_logging_configure_with_output_handler(global_args, allocator, output_handler::rcl_logging_output_handler_t)
+    ccall((:rcl_logging_configure_with_output_handler, LIBRCL), rcl_ret_t, (Ptr{rcl_arguments_t}, Ptr{rcl_allocator_t}, rcl_logging_output_handler_t), global_args, allocator, output_handler)
+end
+
 function rcl_logging_fini()
     ccall((:rcl_logging_fini, LIBRCL), rcl_ret_t, ())
 end
 
 function rcl_logging_rosout_enabled()
     ccall((:rcl_logging_rosout_enabled, LIBRCL), Bool, ())
+end
+
+function rcl_logging_multiple_output_handler(location, severity::Cint, name, timestamp::rcutils_time_point_value_t, format, args)
+    ccall((:rcl_logging_multiple_output_handler, LIBRCL), Cvoid, (Ptr{rcutils_log_location_t}, Cint, Cstring, rcutils_time_point_value_t, Cstring, Ptr{va_list}), location, severity, name, timestamp, format, args)
 end
 
 # -----------------------
@@ -528,10 +568,6 @@ end
 
 function rcl_node_get_domain_id(node, domain_id)
     ccall((:rcl_node_get_domain_id, LIBRCL), rcl_ret_t, (Ptr{rcl_node_t}, Ptr{Csize_t}), node, domain_id)
-end
-
-function rcl_node_assert_liveliness(node)
-    ccall((:rcl_node_assert_liveliness, LIBRCL), rcl_ret_t, (Ptr{rcl_node_t},), node)
 end
 
 function rcl_node_get_rmw_handle(node)
@@ -643,7 +679,7 @@ function rcl_publisher_is_valid_except_context(publisher)
 end
 
 function rcl_publisher_get_subscription_count(publisher, subscription_count)
-    ccall((:rcl_publisher_get_subscription_count, LIBRCL), rmw_ret_t, (Ptr{rcl_publisher_t}, Ptr{Csize_t}), publisher, subscription_count)
+    ccall((:rcl_publisher_get_subscription_count, LIBRCL), rcl_ret_t, (Ptr{rcl_publisher_t}, Ptr{Csize_t}), publisher, subscription_count)
 end
 
 function rcl_publisher_get_actual_qos(publisher)
@@ -699,15 +735,27 @@ end
 # -----------------------
 
 # -----------------------------------------
-# Generated wrapper for security_directory.h
+# Generated wrapper for security.h
 # -----------------------------------------
 
-function rcl_get_secure_root(node_name, node_namespace, allocator)
-    ccall((:rcl_get_secure_root, LIBRCL), Cstring, (Cstring, Cstring, Ptr{rcl_allocator_t}), node_name, node_namespace, allocator)
+function rcl_get_security_options_from_environment(name, allocator, security_options)
+    ccall((:rcl_get_security_options_from_environment, LIBRCL), rcl_ret_t, (Cstring, Ptr{rcutils_allocator_t}, Ptr{rmw_security_options_t}), name, allocator, security_options)
+end
+
+function rcl_security_enabled(use_security)
+    ccall((:rcl_security_enabled, LIBRCL), rcl_ret_t, (Ptr{Bool},), use_security)
+end
+
+function rcl_get_enforcement_policy(policy)
+    ccall((:rcl_get_enforcement_policy, LIBRCL), rcl_ret_t, (Ptr{rmw_security_enforcement_policy_t},), policy)
+end
+
+function rcl_get_secure_root(name, allocator)
+    ccall((:rcl_get_secure_root, LIBRCL), Cstring, (Cstring, Ptr{rcl_allocator_t}), name, allocator)
 end
 
 # -----------------------
-# end security_directory.h
+# end security.h
 # -----------------------
 
 # -----------------------------------------
@@ -728,6 +776,10 @@ end
 
 function rcl_service_get_default_options()
     ccall((:rcl_service_get_default_options, LIBRCL), rcl_service_options_t, ())
+end
+
+function rcl_take_request_with_info(service, request_header, ros_request)
+    ccall((:rcl_take_request_with_info, LIBRCL), rcl_ret_t, (Ptr{rcl_service_t}, Ptr{rmw_service_info_t}, Ptr{Cvoid}), service, request_header, ros_request)
 end
 
 function rcl_take_request(service, request_header, ros_request)
@@ -780,6 +832,10 @@ end
 
 function rcl_take(subscription, ros_message, message_info, allocation)
     ccall((:rcl_take, LIBRCL), rcl_ret_t, (Ptr{rcl_subscription_t}, Ptr{Cvoid}, Ptr{rmw_message_info_t}, Ptr{rmw_subscription_allocation_t}), subscription, ros_message, message_info, allocation)
+end
+
+function rcl_take_sequence(subscription, count::Csize_t, message_sequence, message_info_sequence, allocation)
+    ccall((:rcl_take_sequence, LIBRCL), rcl_ret_t, (Ptr{rcl_subscription_t}, Csize_t, Ptr{rmw_message_sequence_t}, Ptr{rmw_message_info_sequence_t}, Ptr{rmw_subscription_allocation_t}), subscription, count, message_sequence, message_info_sequence, allocation)
 end
 
 function rcl_take_serialized_message(subscription, serialized_message, message_info, allocation)
@@ -987,6 +1043,26 @@ end
 # -----------------------
 
 # -----------------------------------------
+# Generated wrapper for validate_enclave_name.h
+# -----------------------------------------
+
+function rcl_validate_enclave_name(enclave, validation_result, invalid_index)
+    ccall((:rcl_validate_enclave_name, LIBRCL), rcl_ret_t, (Cstring, Ptr{Cint}, Ptr{Csize_t}), enclave, validation_result, invalid_index)
+end
+
+function rcl_validate_enclave_name_with_size(enclave, enclave_length::Csize_t, validation_result, invalid_index)
+    ccall((:rcl_validate_enclave_name_with_size, LIBRCL), rcl_ret_t, (Cstring, Csize_t, Ptr{Cint}, Ptr{Csize_t}), enclave, enclave_length, validation_result, invalid_index)
+end
+
+function rcl_enclave_name_validation_result_string(validation_result::Cint)
+    ccall((:rcl_enclave_name_validation_result_string, LIBRCL), Cstring, (Cint,), validation_result)
+end
+
+# -----------------------
+# end validate_enclave_name.h
+# -----------------------
+
+# -----------------------------------------
 # Generated wrapper for validate_topic_name.h
 # -----------------------------------------
 
@@ -1068,6 +1144,10 @@ end
 
 function rcl_wait(wait_set, timeout::Int64)
     ccall((:rcl_wait, LIBRCL), rcl_ret_t, (Ptr{rcl_wait_set_t}, Int64), wait_set, timeout)
+end
+
+function rcl_wait_set_is_valid(wait_set)
+    ccall((:rcl_wait_set_is_valid, LIBRCL), Bool, (Ptr{rcl_wait_set_t},), wait_set)
 end
 
 # -----------------------
