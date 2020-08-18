@@ -6,7 +6,7 @@ init_node("jltest", anonymous=true)
 #Parameters
 @test length(RobotOS.get_param_names()) > 0
 @test has_param("rosdistro")
-@test chomp(get_param("rosdistro")) in ["hydro", "indigo", "jade", "kinetic", "lunar", "melodic"]
+@test chomp(get_param("rosdistro")) in ["kinetic", "melodic", "noetic"]
 @test ! has_param("some_param")
 @test_throws KeyError get_param("some_param")
 @test_throws KeyError delete_param("some_param")
