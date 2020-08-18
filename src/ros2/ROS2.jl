@@ -10,18 +10,27 @@ function include_roslib(libname::String)
     include("../../roslibs/lib$(libname)_api.jl")
 end
 
-include_roslib("rosidl_generator_c")
-include_roslib("rosidl_typesupport_introspection_c")
-include_roslib("rcutils")
-include_roslib("rmw")
-include_roslib("rcl")
+#include_roslib("rosidl_generator_c")
+#include_roslib("rosidl_typesupport_introspection_c")
+#include_roslib("rcutils")
+#include_roslib("rmw")
+#include_roslib("rcl")
 
 # Circular definitions removed to here (TODO)
-const RCUTILS_STEADY_TIME = rcutils_steady_time_now #from rcutils_common
+#const RCUTILS_STEADY_TIME = rcutils_steady_time_now #from rcutils_common
 
 # this package's code
 include("clang_wrap.jl")
 include("typegen.jl")
+
+# Create a full Clang of all the ROS2 packages we need in the correct order
+function wrap_ros2()
+    wrap_rospkg("rcutils")
+    wrap_rospkg("rosidl_generator_c")
+    wrap_rospkg("rosidl_typesupport_introspection_c")
+    wrap_rospkg("rmw")
+    wrap_rospkg("rcl")
+end
 
 const LIBRCL = :librcl
 

@@ -69,7 +69,11 @@ function wrap_rospkg(pkg)
     println(api_stream, "# Automatically generated using Clang.jl, do not edit manually")
     println(api_stream, "# Use `wrap_rospkg` in `clang_wrap.jl` for regeneration")
 
-    manual_wrappings = MANUAL_WRAPPINGS[pkg]
+    manual_wrappings = if haskey(MANUAL_WRAPPINGS, pkg)
+        MANUAL_WRAPPINGS[pkg]
+    else
+        Dict{String,Expr}()
+    end
 
     for trans_unit in ctx.trans_units
         root_cursor = getcursor(trans_unit)
@@ -94,7 +98,7 @@ function wrap_rospkg(pkg)
             end
 
             # certain cursors require hand-coded wraps
-            if child_name in manual_wrappings
+            if haskey(manual_wrappings, child_name)
                 manual_wrap!(ctx, child, manual_wrappings[child_name])
                 continue
             end
