@@ -430,13 +430,21 @@ function buildtype(mod::ROSSrvModule, typename::String)
     [reqexprs; respexprs; srvexprs]
 end
 
+# Container for the generated expressions for each type
+struct ROSTypeExprs
+    # The contents of the 'struct ... end' block
+    member_decls::Vector{Expr}
+    # The default values used for defining a no argument constructor
+    constructor_defs::Vector{Any}
+    # The conversions to PyObject
+    conv_to_pyobj_args::Vector{Expr}
+    # The conversion from PyObject
+    conv_from_pyobj_args::Vector{Expr}
+end
+ROSTypeExprs() = ROSTypeExprs(Expr[], Expr[], Expr[], Expr[])
+
 #Create the core generated expressions for a native Julia message type that has
-#data fields and interchanges with a python counterpart:
-# (1) the 'type ... end' block
-# (2) Default outer constructer with no arguments
-# (3) convert(PyObject, ...)
-# (4) convert(..., o::PyObject)
-# (5) getproperty for accessing member constants
+#data fields and interchanges with a python counterpart
 function typecode(rosname::String, super::Symbol, members::Vector)
     tname = _splittypestr(rosname)[2]
     @debug("Type: ", tname)
@@ -448,44 +456,52 @@ function typecode(rosname::String, super::Symbol, members::Vector)
          else; "ROS" end
     jlsym = Symbol(_jl_safe_name(tname,suffix))
 
+    #First generate the interior expressions for each member separately
+    member_exprs = ROSTypeExprs()
+    for (namestr,typ) in members
+        @debug_addindent
+        _addtypemember!(member_exprs, namestr, typ)
+        @debug_subindent
+    end
+
+    #Now build the full expressions
     exprs = Expr[]
-    #First the empty expressions
-    #(1) Type declaration
+    # Type declaration
     push!(exprs, :(
         mutable struct $jlsym <: $super
-            #Generated code here
+            $(member_exprs.member_decls...)
         end
     ))
-    #(2) Default constructor, but only if the type has members
+    # Default constructor, but only if the type has members
     if length(members) > 0
         push!(exprs, :(
             function $jlsym()
-                $jlsym() #Generated code inside parens here
+                $jlsym($(member_exprs.constructor_defs...))
             end
         ))
     else
         push!(exprs, :())
     end
-    #(3) Convert to PyObject
+    # Convert to PyObject
     push!(exprs, :(
         function convert(::Type{PyObject}, o::$jlsym)
             py = pycall(RobotOS._rospy_objects[$rosname], PyObject)
-            #Generated code here
+            $(member_exprs.conv_to_pyobj_args...)
             py
         end
     ))
-    #(4) Convert from PyObject
+    # Convert from PyObject
     push!(exprs, :(
         function convert(jlt::Type{$jlsym}, o::PyObject)
             if convert(String, o."_type") != _typerepr(jlt)
                 throw(InexactError(:convert, $jlsym, o))
             end
             jl = $jlsym()
-            #Generated code here
+            $(member_exprs.conv_from_pyobj_args...)
             jl
         end
     ))
-    #(5) Accessing member variables through getproperty
+    # Accessing member variables through getproperty
     push!(exprs, :(
         function getproperty(::Type{$jlsym}, s::Symbol)
             try getproperty(RobotOS._rospy_objects[$rosname], s)
@@ -499,28 +515,16 @@ function typecode(rosname::String, super::Symbol, members::Vector)
             end
         end
     ))
-
-    #Now add the meat to the empty expressions above
-    for (namestr,typ) in members
-        @debug_addindent
-        _addtypemember!(exprs, namestr, typ)
-        @debug_subindent
-    end
     push!(exprs, :(_typerepr(::Type{$jlsym}) = $rosname))
+
     exprs
 end
-
 
 #Add the generated expression from a single member of a type, either built-in
 #or ROS type. `exprs` is the Expr objects of the items created in `typecode`.
 #Maybe this can be factored into something nicer.
-function _addtypemember!(exprs, namestr, typestr)
+function _addtypemember!(exprs::ROSTypeExprs, namestr, typestr)
     @debug("$namestr :: $typestr")
-    typeargs  = exprs[1].args[3].args
-    consargs  = exprs[2].args[2].args[2].args
-    pyconargs = exprs[3].args[2].args
-    jlconargs = exprs[4].args[2].args
-
     if typestr == "char" || typestr == "byte"
         @warn("Use of type '$typestr' is deprecated in message definitions, " *
               "use '$(lowercase(string(_ros_builtin_types[typestr])))' instead.")
@@ -564,10 +568,11 @@ function _addtypemember!(exprs, namestr, typestr)
         jlconexpr = :(jl.$namesym = convert($j_typ, o.$namestr))
         pyconexpr = :(py.$namestr = convert(PyObject, o.$namesym))
     end
-    push!(typeargs, memexpr)
-    insert!(jlconargs, length(jlconargs), jlconexpr)
-    insert!(pyconargs, length(pyconargs), pyconexpr)
-    push!(consargs, defexpr)
+
+    push!(exprs.member_decls, memexpr)
+    push!(exprs.constructor_defs, defexpr)
+    push!(exprs.conv_to_pyobj_args, pyconexpr)
+    push!(exprs.conv_from_pyobj_args, jlconexpr)
 end
 
 #Build a String => Iterable{String} object from the individual package
