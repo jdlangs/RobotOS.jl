@@ -31,9 +31,11 @@ function __init__()
     try
         copy!(__rospy__, pyimport("rospy"))
     catch ex
-        if (isa(ex, PyCall.PyError) &&
-            pycall(pybuiltin("str"), PyAny, ex.val) == "No module named rospy")
-            error("rospy not found!\nHas an environment setup script been run?")
+        if (isa(ex, PyCall.PyError) && ex.T.__name__ == "ModuleNotFoundError")
+            @error """
+                Unable to load the 'rospy' python package!
+                Has an environment setup script been run?
+                """
         else
             rethrow(ex)
         end
